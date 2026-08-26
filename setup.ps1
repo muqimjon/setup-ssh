@@ -230,10 +230,22 @@ if ($useTs) {
             if ($mk -match '^tskey-') { $TailscaleAuthKey = $mk; Ok "bir martalik kalit olindi (kutish rejimi)" }
         } catch { }
     }
-    $a = @('up','--accept-dns=false')
+    $a = @('up','--accept-dns=false','--unattended')
     if ($TailscaleAuthKey) { $a += "--authkey=$TailscaleAuthKey" } else { Wa "brauzer ochiladi - hisobingga kir" }
     & tailscale @a
-    Ok "Tailscale ulandi"
+    Ok "Tailscale ulandi (servis fonda)"
+
+    # GUI/tray oynasini yopish va avtostartdan olib tashlash - faqat servis (ulanish) qoladi
+    Start-Sleep -Seconds 2
+    Get-Process -Name 'tailscale-ipn' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    foreach ($rk in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run',
+                      'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run')) {
+        if (Test-Path $rk) {
+            (Get-Item $rk).Property | Where-Object { $_ -match 'tailscale' } |
+                ForEach-Object { Remove-ItemProperty -Path $rk -Name $_ -ErrorAction SilentlyContinue }
+        }
+    }
+    Ok "Tailscale UI yopildi (fonda ishlaydi)"
 }
 
 Hd "6) Tekshiruv"
