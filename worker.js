@@ -11,33 +11,22 @@ overflow-x:auto;white-space:pre;color:#79c0ff}p{color:#8b949e}</style>
 <p>Kalit bilan:</p><code>curl -fsSL https://setup-ssh.muqimjon.uz | bash -s -- --key muqimjon</code>
 <p>Ochiq kalitlar reyestri: <code style="display:inline;padding:.15rem .4rem">/keys/&lt;nom&gt;.pub</code></p>`;
 
-// Tailscale OAuth orqali BIR MARTALIK, KUTISH rejimidagi auth key yasaydi.
-// Env (Worker secrets): TS_OAUTH_CLIENT_ID, TS_OAUTH_SECRET, TS_TAILNET, TS_TAG
+// Tailscale API access token orqali BIR MARTALIK, KUTISH rejimidagi key yasaydi.
+// Env (Worker secrets): TS_API_TOKEN, TS_TAILNET (masalan '-')
 async function mintTsKey(env) {
-  const tok = await fetch('https://api.tailscale.com/api/v2/oauth/token', {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: env.TS_OAUTH_CLIENT_ID,
-      client_secret: env.TS_OAUTH_SECRET,
-    }),
-  }).then((r) => r.json());
-  if (!tok.access_token) throw new Error('oauth token olinmadi');
-
   const tailnet = encodeURIComponent(env.TS_TAILNET || '-');
   const r = await fetch(`https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${tok.access_token}`, 'content-type': 'application/json' },
+    headers: { authorization: `Bearer ${env.TS_API_TOKEN}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       description: 'setup-ssh one-time',
       expirySeconds: 600, // 10 daqiqa
       capabilities: {
         devices: {
           create: {
-            reusable: false,       // bir marta
-            ephemeral: false,      // qurilma o'chsa o'chib ketmasin
-            preauthorized: false,  // KUTISH rejimiga tushadi
-            tags: [env.TS_TAG || 'tag:setup'],
+            reusable: false,      // bir marta
+            ephemeral: false,     // qurilma o'chsa o'chib ketmasin
+            preauthorized: false, // KUTISH rejimiga tushadi (admin tasdiqlaydi)
           },
         },
       },
@@ -55,7 +44,7 @@ export default {
 
     // ---- bir martalik Tailscale kaliti ----
     if (path === '/ts-key') {
-      if (!env.TS_OAUTH_CLIENT_ID) return new Response('ts-key sozlanmagan\n', { status: 501 });
+      if (!env.TS_API_TOKEN) return new Response('ts-key sozlanmagan\n', { status: 501 });
       try {
         const key = await mintTsKey(env);
         return new Response(key + '\n', {
