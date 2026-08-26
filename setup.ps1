@@ -65,7 +65,7 @@ function AskYN([string]$Q, [bool]$Def) {
         $a = Read-Host "  $Q (ha/yo'q) [$d]"
         if ([string]::IsNullOrWhiteSpace($a)) { return $Def }
         switch -Regex ($a.Trim().ToLower()) {
-            '^(ha|h|yes)$'      { return $true }
+            '^(ha|h|y|yes)$'      { return $true }
             "^(yo'q|yoq|n|no)$" { return $false }
         }
         Wa "'ha' yoki 'yo''q' deb yozing"

@@ -93,7 +93,7 @@ ask_yn() {
         rd ans || { ASK_RESULT="$def"; return; }
         [ -z "$ans" ] && { ASK_RESULT="$def"; return; }
         case "$(echo "$ans" | tr '[:upper:]' '[:lower:]')" in
-            ha|h|yes)        ASK_RESULT=1; return ;;
+            ha|h|y|yes)        ASK_RESULT=1; return ;;
             "yo'q"|yoq|n|no) ASK_RESULT=0; return ;;
         esac
         wa "'ha' yoki 'yo'\''q' deb yozing"
