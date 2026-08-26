@@ -1,0 +1,15 @@
+name = "ssh-setup"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+routes = [
+  { pattern = "setup-ssh.muqimjon.uz", custom_domain = true }
+]
+
+[vars]
+TS_TAG = "tag:setup"
+
+# Secretlar (wrangler secret put ... yoki dashboard orqali):
+#   TS_OAUTH_CLIENT_ID   - Tailscale OAuth client id
+#   TS_OAUTH_SECRET      - Tailscale OAuth client secret
+#   TS_TAILNET           - tailnet nomi (masalan '-' yoki email)
