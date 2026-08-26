@@ -284,7 +284,7 @@ if [ "$USE_TS" = "1" ]; then
     else
         command -v tailscale >/dev/null 2>&1 || curl -fsSL https://tailscale.com/install.sh | $SUDO sh
         if [ -z "$TS_KEY" ]; then
-            u="$TS_URL"; [ -n "$TSTAG" ] && u="$TS_URL?tag=$TSTAG"
+            u="$TS_URL?tag=${TSTAG:-client}"
             TS_KEY=$(curl -fsSL --max-time 20 "$u" 2>/dev/null | grep -E '^tskey-' || true)
             [ -n "$TS_KEY" ] && ok "bir martalik kalit olindi (kutish rejimi)"
         fi

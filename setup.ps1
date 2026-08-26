@@ -224,7 +224,7 @@ if ($useTs) {
     }
     if (-not $TailscaleAuthKey) {
         try {
-            $u = if ($TsTag) { "$TS_URL`?tag=$TsTag" } else { $TS_URL }
+            $u = "$TS_URL`?tag=$(if ($TsTag) { $TsTag } else { 'client' })"
             $mk = (Invoke-RestMethod -Uri $u -TimeoutSec 20).Trim()
             if ($mk -match '^tskey-') { $TailscaleAuthKey = $mk; Ok "bir martalik kalit olindi (kutish rejimi)" }
         } catch { }
