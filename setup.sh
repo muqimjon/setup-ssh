@@ -5,7 +5,7 @@
 #
 # Kalit bilan (faqat bitta savol beriladi):
 #   ... | bash -s -- --key muqimjon
-#   ... | bash -s -- --key muqimjon avazbek gh:hamkasb
+#   ... | bash -s -- --key muqimjon telefon ish-pc
 #   ... | bash -s -- --key "ssh-ed25519 AAAA... izoh"
 #
 # Savolsiz:
@@ -168,7 +168,7 @@ elif [ "${#KEYARGS[@]}" -gt 0 ]; then
 else
     ask "Kim kira oladi?" 0 "Faqat parol bilan" "Ochiq kalit qo'shaman"
     if [ "$ASK_RESULT" = "1" ]; then
-        ask_text "Kalit nomlari (probel bilan bir nechta: muqimjon gh:avazbek https://...)"
+        ask_text "Kalit nomlari (probel bilan bir nechta: muqimjon telefon https://...)"
         case "$ASK_RESULT" in
             "") ;;
             ssh-*|ecdsa-*) KEYS="$(resolve_key "$ASK_RESULT")$NL" ;;

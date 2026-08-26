@@ -29,7 +29,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://setup-ssh.muqimjon
 & ([scriptblock]::Create((irm https://setup-ssh.muqimjon.uz/setup.ps1))) -Key muqimjon,telefon
 ```
 ```bash
-curl -fsSL https://setup-ssh.muqimjon.uz | bash -s -- --key muqimjon telefon gh:hamkasb
+curl -fsSL https://setup-ssh.muqimjon.uz | bash -s -- --key muqimjon telefon ish-pc
 ```
 
 `--key` / `-Key` to'rt xil qiymatni tushunadi:

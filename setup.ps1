@@ -8,7 +8,7 @@
 
     Kalit bilan (faqat bitta savol beriladi):
         & ([scriptblock]::Create((irm https://setup-ssh.muqimjon.uz/setup.ps1))) -Key muqimjon
-        ... -Key muqimjon,avazbek,gh:hamkasb
+        ... -Key muqimjon,telefon,ish-pc
         ... -Key "ssh-ed25519 AAAA... izoh"
 
     Savolsiz:
@@ -129,7 +129,7 @@ elseif ($Key) { foreach ($k in $Key) { $keys += Resolve-Key $k } }
 else {
     # bayroq berilmagan - yagona qo'shimcha savol
     if ((Ask "Kim kira oladi?" @('Faqat parol bilan', 'Ochiq kalit qo''shaman') 0) -eq 1) {
-        $t = AskText "Kalit nomlari (probel bilan bir nechta: muqimjon gh:avazbek https://...)"
+        $t = AskText "Kalit nomlari (probel bilan bir nechta: muqimjon telefon https://...)"
         if ($t -match '^(ssh-|ecdsa-)') { $keys = Resolve-Key $t }
         elseif ($t) {
             foreach ($x in ($t -split '[\s,]+' | Where-Object { $_ })) { $keys += Resolve-Key $x }
