@@ -87,16 +87,16 @@ ask_text() {
 ask_yn() {
     local q="$1" def="$2" ans hint
     [ "$YES" = "1" ] && { ASK_RESULT="$def"; return; }
-    [ "$def" = "1" ] && hint="ha" || hint="yo'q"
+    [ "$def" = "1" ] && hint="yes" || hint="no"
     while true; do
-        printf "  %s (ha/yo'q) [%s]: " "$q" "$hint"
+        printf "  %s (yes/no) [%s]: " "$q" "$hint"
         rd ans || { ASK_RESULT="$def"; return; }
         [ -z "$ans" ] && { ASK_RESULT="$def"; return; }
         case "$(echo "$ans" | tr '[:upper:]' '[:lower:]')" in
-            ha|h|y|yes)        ASK_RESULT=1; return ;;
-            "yo'q"|yoq|n|no) ASK_RESULT=0; return ;;
+            y|yes) ASK_RESULT=1; return ;;
+            n|no)  ASK_RESULT=0; return ;;
         esac
-        wa "'ha' yoki 'yo'\''q' deb yozing"
+        wa "'yes' yoki 'no' deb yozing"
     done
 }
 

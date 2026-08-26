@@ -60,15 +60,15 @@ function AskText([string]$Q) {
 }
 function AskYN([string]$Q, [bool]$Def) {
     if ($Yes) { return $Def }
-    $d = if ($Def) { "ha" } else { "yo'q" }
+    $d = if ($Def) { "yes" } else { "no" }
     while ($true) {
-        $a = Read-Host "  $Q (ha/yo'q) [$d]"
+        $a = Read-Host "  $Q (yes/no) [$d]"
         if ([string]::IsNullOrWhiteSpace($a)) { return $Def }
         switch -Regex ($a.Trim().ToLower()) {
-            '^(ha|h|y|yes)$'      { return $true }
-            "^(yo'q|yoq|n|no)$" { return $false }
+            '^(y|yes)$' { return $true }
+            '^(n|no)$'  { return $false }
         }
-        Wa "'ha' yoki 'yo''q' deb yozing"
+        Wa "'yes' yoki 'no' deb yozing"
     }
 }
 
