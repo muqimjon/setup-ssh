@@ -1,4 +1,4 @@
-const RAW = 'https://raw.githubusercontent.com/muqimjon/ssh-setup/main';
+const RAW = 'https://raw.githubusercontent.com/muqimjon/setup-ssh/main';
 
 const HTML = `<!doctype html><meta charset=utf-8><title>setup-ssh.muqimjon.uz</title>
 <style>body{font:16px/1.6 system-ui,sans-serif;max-width:44rem;margin:5rem auto;padding:0 1.5rem;
