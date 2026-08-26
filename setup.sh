@@ -333,3 +333,9 @@ if [ -n "$KEYS" ] && [ "$DISABLE_PW" = "0" ]; then
     printf "      %ssed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' %s%s\n" "$C_GY" "$CFG" "$C_0"
 fi
 echo ""
+
+# Fayldan ishga tushirilgan bo'lsa (masalan `curl -o s.sh && bash s.sh`),
+# skript o'zini o'chiradi. `curl | bash` da $0 fayl emas - tegmaydi.
+if [ -f "$0" ] && [ "$0" != "bash" ] && [ "$0" != "sh" ]; then
+    rm -f -- "$0" 2>/dev/null || true
+fi

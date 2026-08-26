@@ -255,3 +255,9 @@ if ($keys -and -not $DisablePassword) {
     Write-Host '      (gc $env:ProgramData\ssh\sshd_config) -replace "^#?PasswordAuthentication.*","PasswordAuthentication no" | sc $env:ProgramData\ssh\sshd_config; Restart-Service sshd' -ForegroundColor DarkGray
 }
 Write-Host ""
+
+# Fayldan ishga tushirilgan bo'lsa skript o'zini o'chiradi.
+# irm | iex da $PSCommandPath bo'sh - tegmaydi.
+if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) {
+    Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
+}
