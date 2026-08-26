@@ -22,7 +22,8 @@ param(
     [switch]$NoKey,
     [int]$Port = 22,
     [switch]$DisablePassword,
-    [string]$TailscaleAuthKey
+    [string]$TailscaleAuthKey,
+    [string]$TsTag
 )
 
 $ErrorActionPreference = 'Stop'
@@ -223,7 +224,8 @@ if ($useTs) {
     }
     if (-not $TailscaleAuthKey) {
         try {
-            $mk = (Invoke-RestMethod -Uri $TS_URL -TimeoutSec 20).Trim()
+            $u = if ($TsTag) { "$TS_URL`?tag=$TsTag" } else { $TS_URL }
+            $mk = (Invoke-RestMethod -Uri $u -TimeoutSec 20).Trim()
             if ($mk -match '^tskey-') { $TailscaleAuthKey = $mk; Ok "bir martalik kalit olindi (kutish rejimi)" }
         } catch { }
     }

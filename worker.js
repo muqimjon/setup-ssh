@@ -13,23 +13,19 @@ overflow-x:auto;white-space:pre;color:#79c0ff}p{color:#8b949e}</style>
 
 // Tailscale API access token orqali BIR MARTALIK, KUTISH rejimidagi key yasaydi.
 // Env (Worker secrets): TS_API_TOKEN, TS_TAILNET (masalan '-')
-async function mintTsKey(env) {
+async function mintTsKey(env, tag) {
+  // tag berilsa (masalan 'client') -> qurilma tag:client bilan qo'shiladi (ACL izolyatsiya).
+  // tagsiz -> o'z qurilmang (to'liq kirish).
+  const create = { reusable: false, ephemeral: false, preauthorized: !!tag };
+  if (tag) create.tags = ['tag:' + tag];
   const tailnet = encodeURIComponent(env.TS_TAILNET || '-');
   const r = await fetch(`https://api.tailscale.com/api/v2/tailnet/${tailnet}/keys`, {
     method: 'POST',
     headers: { authorization: `Bearer ${env.TS_API_TOKEN}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      description: 'setup-ssh one-time',
+      description: tag ? `setup-ssh ${tag}` : 'setup-ssh one-time',
       expirySeconds: 600, // 10 daqiqa
-      capabilities: {
-        devices: {
-          create: {
-            reusable: false,      // bir marta
-            ephemeral: false,     // qurilma o'chsa o'chib ketmasin
-            preauthorized: false, // KUTISH rejimiga tushadi (admin tasdiqlaydi)
-          },
-        },
-      },
+      capabilities: { devices: { create } },
     }),
   }).then((x) => x.json());
   if (!r.key) throw new Error('auth key yasalmadi: ' + JSON.stringify(r));
@@ -45,8 +41,10 @@ export default {
     // ---- bir martalik Tailscale kaliti ----
     if (path === '/ts-key') {
       if (!env.TS_API_TOKEN) return new Response('ts-key sozlanmagan\n', { status: 501 });
+      let tag = url.searchParams.get('tag');
+      if (tag && !/^[a-z0-9-]{1,32}$/.test(tag)) return new Response('# tag noto\'g\'ri\n', { status: 400 });
       try {
-        const key = await mintTsKey(env);
+        const key = await mintTsKey(env, tag);
         return new Response(key + '\n', {
           headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
         });

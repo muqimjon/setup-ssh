@@ -22,7 +22,7 @@ TERMUX=0
 case "${PREFIX:-}" in *com.termux*) TERMUX=1 ;; esac
 [ -d /data/data/com.termux/files ] && TERMUX=1
 
-YES=0; MODE=""; NOKEY=0; DISABLE_PW=0; TS_KEY=""
+YES=0; MODE=""; NOKEY=0; DISABLE_PW=0; TS_KEY=""; TSTAG=""
 PORT=$([ "$TERMUX" = "1" ] && echo 8022 || echo 22)
 KEYARGS=()
 NL=$'\n'
@@ -41,6 +41,7 @@ while [ $# -gt 0 ]; do
         --port)             PORT="$2"; shift ;;
         --disable-password) DISABLE_PW=1 ;;
         --ts-key)           TS_KEY="$2"; shift ;;
+        --ts-tag)           TSTAG="$2"; shift ;;
         *) echo "noma'lum parametr: $1"; exit 1 ;;
     esac
     shift
@@ -283,7 +284,8 @@ if [ "$USE_TS" = "1" ]; then
     else
         command -v tailscale >/dev/null 2>&1 || curl -fsSL https://tailscale.com/install.sh | $SUDO sh
         if [ -z "$TS_KEY" ]; then
-            TS_KEY=$(curl -fsSL --max-time 20 "$TS_URL" 2>/dev/null | grep -E '^tskey-' || true)
+            u="$TS_URL"; [ -n "$TSTAG" ] && u="$TS_URL?tag=$TSTAG"
+            TS_KEY=$(curl -fsSL --max-time 20 "$u" 2>/dev/null | grep -E '^tskey-' || true)
             [ -n "$TS_KEY" ] && ok "bir martalik kalit olindi (kutish rejimi)"
         fi
         if [ -n "$TS_KEY" ]; then $SUDO tailscale up --authkey="$TS_KEY"
