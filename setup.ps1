@@ -31,7 +31,7 @@ $ErrorActionPreference = 'Stop'
 $KEYS_BASE = 'https://setup-ssh.muqimjon.uz/keys'
 $TS_URL    = 'https://setup-ssh.muqimjon.uz/ts-key'
 
-function H  ($t) { Write-Host "`n$t" -ForegroundColor Cyan }
+function Hd ($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Ok ($t) { Write-Host "   [ok] $t" -ForegroundColor Green }
 function Wa ($t) { Write-Host "   [!]  $t" -ForegroundColor Yellow }
 function Er ($t) { Write-Host "`n   [xato] $t" -ForegroundColor Red; exit 1 }
@@ -156,7 +156,7 @@ if (-not (AskYN "Davom etamizmi?" $true)) { Write-Host "  Bekor qilindi."; exit 
 
 # ================= BAJARISH =================
 
-H "1) OpenSSH Server"
+Hd "1) OpenSSH Server"
 $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*'
 if ($cap.State -ne 'Installed') {
     Write-Host "   o'rnatilmoqda..."
@@ -167,7 +167,7 @@ Set-Service sshd -StartupType Automatic
 if ((Get-Service sshd).Status -ne 'Running') { Start-Service sshd }
 Ok "sshd ishlayapti"
 
-H "2) sshd_config"
+Hd "2) sshd_config"
 $cfg = "$env:ProgramData\ssh\sshd_config"
 Copy-Item $cfg "$cfg.bak" -Force -ErrorAction SilentlyContinue
 $txt = Get-Content $cfg -Raw
@@ -181,7 +181,7 @@ $txt = SetD $txt 'PasswordAuthentication' $(if ($DisablePassword) { 'no' } else 
 Set-Content $cfg $txt -Encoding utf8
 Ok "port=$Port, kalit=yoq, parol=$(if($DisablePassword){"yo'q"}else{'ha'})"
 
-H "3) Ochiq kalitlar"
+Hd "3) Ochiq kalitlar"
 if (-not $keys) { Wa "joylanmadi - parol bilan kiriladi" }
 else {
     $kf = "$env:ProgramData\ssh\administrators_authorized_keys"
@@ -197,7 +197,7 @@ else {
     Ok "huquqlar to'g'irlandi"
 }
 
-H "4) Firewall va tarmoq"
+Hd "4) Firewall va tarmoq"
 Get-NetFirewallRule -DisplayName 'SSH (setup-ssh)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 if ($useLan) {
     New-NetFirewallRule -DisplayName 'SSH (setup-ssh)' -Direction Inbound -Protocol TCP `
@@ -216,7 +216,7 @@ Restart-Service sshd
 Ok "sshd qayta ishga tushdi"
 
 if ($useTs) {
-    H "5) Tailscale"
+    Hd "5) Tailscale"
     if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
         winget install --id tailscale.tailscale --silent --accept-package-agreements --accept-source-agreements
         $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
@@ -233,7 +233,7 @@ if ($useTs) {
     Ok "Tailscale ulandi"
 }
 
-H "6) Tekshiruv"
+Hd "6) Tekshiruv"
 if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
     Ok "$Port-port tinglanmoqda"
 } else { Wa "$Port-port tinglanmayapti - sshd loglarini ko'r" }
