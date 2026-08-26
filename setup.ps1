@@ -23,7 +23,8 @@ param(
     [int]$Port = 22,
     [switch]$DisablePassword,
     [string]$TailscaleAuthKey,
-    [string]$TsTag
+    [string]$TsTag,
+    [switch]$Member
 )
 
 $ErrorActionPreference = 'Stop'
@@ -224,7 +225,7 @@ if ($useTs) {
     }
     if (-not $TailscaleAuthKey) {
         try {
-            $u = "$TS_URL`?tag=$(if ($TsTag) { $TsTag } else { 'client' })"
+            $u = if ($Member) { $TS_URL } elseif ($TsTag) { "$TS_URL`?tag=$TsTag" } else { "$TS_URL`?tag=client" }
             $mk = (Invoke-RestMethod -Uri $u -TimeoutSec 20).Trim()
             if ($mk -match '^tskey-') { $TailscaleAuthKey = $mk; Ok "bir martalik kalit olindi (kutish rejimi)" }
         } catch { }
