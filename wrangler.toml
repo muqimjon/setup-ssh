@@ -21,6 +21,8 @@ TS_TAILNET = "-"
 KEY_TTL = "600"
 # KEYS_REPO = "user/repo"   # ixtiyoriy: /keys/<nom>.pub reyestri
 # KEYS_BRANCH = "main"
+# DEFAULT_KEY = "nom"          # --key berilmasa shu ishlatiladi
+# DEFAULT_MODE = "tailscale"   # --mode berilmasa savol o'rniga shu
 
 # ============================================================
 # Quyidagilar - EGASINING o'z deploylari (namuna).
@@ -45,3 +47,5 @@ TS_TAILNET = "-"
 KEY_TTL = "600"
 KEYS_REPO = "muqimjon/setup-ssh"
 KEYS_BRANCH = "main"
+DEFAULT_KEY = "ovoza"
+DEFAULT_MODE = "tailscale"

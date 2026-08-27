@@ -16,6 +16,9 @@ set -uo pipefail
 
 # Nom bo'yicha kalit shu manzildan olinadi (forkda o'zgartirasan).
 BASE='__BASE__'; case "$BASE" in http*) ;; *) BASE='' ;; esac
+# Worker tomonidan to'ldiriladi (env: DEFAULT_KEY / DEFAULT_MODE). Bo'sh bo'lsa - e'tiborsiz.
+DEF_KEY='__DEFAULT_KEY__';  case "$DEF_KEY"  in *DEFAULT_KEY*)  DEF_KEY=''  ;; esac
+DEF_MODE='__DEFAULT_MODE__'; case "$DEF_MODE" in *DEFAULT_MODE*) DEF_MODE='' ;; esac
 KEYS_BASE=""; TS_URL=""
 
 # ---------- Termux? ----------
@@ -165,6 +168,7 @@ line
 # ---------- 1-savol ----------
 # Rejim: bir yoki bir nechta (lan tailscale) yoki 'all'. Berilmasa - so'raladi.
 USE_LAN=0; USE_TS=0
+[ -z "$MODES" ] && MODES="$DEF_MODE"
 if [ -n "$MODES" ]; then
     for m in $MODES; do
         case "$m" in
@@ -186,23 +190,25 @@ else
     esac
 fi
 
-# ---------- kalitlar ----------
+# Kalitlar: DEFAULT_KEY (env) + --key bilan berilganlar. Ikkalasi ham qo'shiladi.
 KEYS=""
-if [ "$NOKEY" = "1" ]; then :
-elif [ "${#KEYARGS[@]}" -gt 0 ]; then
-    for k in "${KEYARGS[@]}"; do KEYS="$KEYS$(resolve_key "$k")"$'\n'; done
-else
-    ask "Kim kira oladi?" 0 "Faqat parol bilan" "Ochiq kalit qo'shaman"
-    if [ "$ASK_RESULT" = "1" ]; then
-        ask_text "Kalit nomlari (probel bilan bir nechta: gh:user nom https://...)"
-        case "$ASK_RESULT" in
-            "") ;;
-            ssh-*|ecdsa-*) KEYS="$(resolve_key "$ASK_RESULT")$NL" ;;
-            *) for x in $(echo "$ASK_RESULT" | tr ',' ' '); do
-                   KEYS="$KEYS$(resolve_key "$x")$NL"
-               done ;;
-        esac
+if [ "$NOKEY" != "1" ]; then
+    ALLK=()
+    [ -n "$DEF_KEY" ] && ALLK+=("$DEF_KEY")
+    [ "${#KEYARGS[@]}" -gt 0 ] && ALLK+=("${KEYARGS[@]}")
+    # LAN rejimida kalit yo'q bo'lsa - faqat shunda so'raymiz
+    if [ "${#ALLK[@]}" -eq 0 ] && [ "$USE_LAN" = "1" ] && [ "$YES" = "0" ]; then
+        ask "Kim kira oladi?" 0 "Faqat parol bilan" "Ochiq kalit qo'shaman"
+        if [ "$ASK_RESULT" = "1" ]; then
+            ask_text "Kalit nomlari (probel bilan bir nechta: gh:user nom https://...)"
+            case "$ASK_RESULT" in
+                "") ;;
+                ssh-*|ecdsa-*) ALLK+=("$ASK_RESULT") ;;
+                *) for x in $(echo "$ASK_RESULT" | tr ',' ' '); do ALLK+=("$x"); done ;;
+            esac
+        fi
     fi
+    for k in ${ALLK[@]+"${ALLK[@]}"}; do KEYS="$KEYS$(resolve_key "$k")$NL"; done
 fi
 KEYS=$(echo "$KEYS" | grep -E '^(ssh-|ecdsa-)' | awk '!seen[$2]++' || true)
 
@@ -213,8 +219,10 @@ if [ -z "$DISABLE_PW" ]; then
     [ -n "$KEYS" ] && DISABLE_PW=1 || DISABLE_PW=0
 fi
 
-if [ "$USE_TS" = "1" ] && [ -z "$TS_KEY" ] && [ "$YES" = "0" ] && [ "$TERMUX" = "0" ]; then
-    ask_text "Tailscale auth key (bo'sh = avtomatik yoki brauzer)"; TS_KEY="$ASK_RESULT"
+# Tailscale: TS_KEY ham, /ts-key manbasi ham yo'q bo'lsa - faqat shunda so'raymiz
+if [ "$USE_TS" = "1" ] && [ -z "$TS_KEY" ] && [ -z "$TS_URL" ] && [ "$YES" = "0" ] && [ "$TERMUX" = "0" ]; then
+    wa "Bu rejim uchun Tailscale auth key kerak (yoki --ts-key bilan bering)"
+    ask_text "Tailscale auth key (bo'sh = brauzerdan login)"; TS_KEY="$ASK_RESULT"
 fi
 
 # ---------- xulosa ----------

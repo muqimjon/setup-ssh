@@ -7,6 +7,8 @@
 //   KEY_TTL       default 600   bir martalik kalit muddati (soniya)
 //   KEYS_REPO     "user/repo"   -> /keys/<nom>.pub shu repodan. Yo'q bo'lsa /keys 404.
 //   KEYS_BRANCH   default "main"
+//   DEFAULT_KEY   "nom"  -> --key berilmasa shu ishlatiladi (qo'shimcha --key lar ustiga qo'shiladi)
+//   DEFAULT_MODE  "lan" | "tailscale" | "all" -> --mode berilmasa savol o'rniga shu
 import setupSh from './setup.sh';
 import setupPs1 from './setup.ps1';
 
@@ -83,6 +85,12 @@ export default {
       return new Response(page(url.origin), { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
     // Skript qaysi domendan olinganini bilsin (ko'p-tenant: har domen o'z tailneti)
-    return txt(body.replaceAll('__BASE__', url.origin), { 'cache-control': 'public, max-age=60' });
+    return txt(
+      body
+        .replaceAll('__BASE__', url.origin)
+        .replaceAll('__DEFAULT_KEY__', env.DEFAULT_KEY || '')
+        .replaceAll('__DEFAULT_MODE__', env.DEFAULT_MODE || ''),
+      { 'cache-control': 'public, max-age=60' },
+    );
   },
 };

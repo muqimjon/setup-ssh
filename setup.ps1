@@ -31,6 +31,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $BaseUrl = '__BASE__'; if ($BaseUrl -notmatch '^https?://') { $BaseUrl = '' }
+# Worker tomonidan to'ldiriladi (env: DEFAULT_KEY / DEFAULT_MODE). Bo'sh bo'lsa - e'tiborsiz.
+$DefKey  = '__DEFAULT_KEY__';  if ($DefKey  -like '*DEFAULT_KEY*')  { $DefKey  = '' }
+$DefMode = '__DEFAULT_MODE__'; if ($DefMode -like '*DEFAULT_MODE*') { $DefMode = '' }
 if ($Base) { $BaseUrl = $Base.TrimEnd("/") }
 $KEYS_BASE = if ($BaseUrl) { "$BaseUrl/keys" } else { "" }
 $TS_URL    = if ($BaseUrl) { "$BaseUrl/ts-key" } else { "" }
@@ -123,6 +126,7 @@ Line
 # ---------- 1-savol ----------
 # Rejim: bir yoki bir nechta (-Mode lan,tailscale) yoki 'all'. Berilmasa - so'raladi.
 $useLan = $false; $useTs = $false
+if (-not $Mode -and $DefMode) { $Mode = $DefMode -split '[ ,]+' | Where-Object { $_ } }
 if ($Mode) {
     foreach ($m in $Mode) {
         switch ($m) {
@@ -144,18 +148,21 @@ if ($Mode) {
 }
 
 # ---------- kalitlar ----------
+# Kalitlar: DEFAULT_KEY (env) + -Key bilan berilganlar. Ikkalasi ham qo'shiladi.
 $keys = @()
-if ($NoKey) { $keys = @() }
-elseif ($Key) { foreach ($k in $Key) { $keys += Resolve-Key $k } }
-else {
-    # bayroq berilmagan - yagona qo'shimcha savol
-    if ((Ask "Kim kira oladi?" @('Faqat parol bilan', 'Ochiq kalit qo''shaman') 0) -eq 1) {
-        $t = AskText "Kalit nomlari (probel bilan bir nechta: gh:user nom https://...)"
-        if ($t -match '^(ssh-|ecdsa-)') { $keys = Resolve-Key $t }
-        elseif ($t) {
-            foreach ($x in ($t -split '[\s,]+' | Where-Object { $_ })) { $keys += Resolve-Key $x }
+if (-not $NoKey) {
+    $allk = @()
+    if ($DefKey) { $allk += $DefKey }
+    if ($Key)    { $allk += $Key }
+    # LAN rejimida kalit yo'q bo'lsa - faqat shunda so'raymiz
+    if ($allk.Count -eq 0 -and $useLan -and -not $Yes) {
+        if ((Ask "Kim kira oladi?" @('Faqat parol bilan', 'Ochiq kalit qo''shaman') 0) -eq 1) {
+            $t = AskText "Kalit nomlari (probel bilan bir nechta: gh:user nom https://...)"
+            if ($t -match '^(ssh-|ecdsa-)') { $allk += $t }
+            elseif ($t) { $allk += ($t -split '[\s,]+' | Where-Object { $_ }) }
         }
     }
+    foreach ($k in $allk) { $keys += Resolve-Key $k }
 }
 $keys = $keys | Select-Object -Unique
 
@@ -163,7 +170,8 @@ $keys = $keys | Select-Object -Unique
 # Kalit joylansa -> parol O'CHADI. Kalit yo'q bo'lsa -> QOLADI (qulf ichida qolmaslik uchun).
 $noPass = if ($KeepPassword) { $false } elseif ($DisablePassword) { $true } else { [bool]$keys }
 
-if ($useTs -and -not $TailscaleAuthKey -and -not $Yes) {
+if ($useTs -and -not $TailscaleAuthKey -and -not $TS_URL -and -not $Yes) {
+    Wa "Bu rejim uchun Tailscale auth key kerak (yoki -TailscaleAuthKey bilan bering)"
     $TailscaleAuthKey = AskText "Tailscale auth key (bo'sh = avtomatik yoki brauzer)"
 }
 
