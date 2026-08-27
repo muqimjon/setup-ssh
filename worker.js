@@ -74,7 +74,9 @@ export default {
 
     const r = await fetch(`${RAW}/${file}`, { cf: { cacheTtl: 60 } });
     if (!r.ok) return new Response(`# ${file} yuklanmadi (${r.status})\n`, { status: 502 });
-    return new Response(r.body, {
+    // Skript o'zini qaysi domendan olinganini bilsin (shaxsiy / kompaniya tailnet)
+    const body = (await r.text()).replaceAll('__BASE__', url.origin);
+    return new Response(body, {
       headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=60' },
     });
   },

@@ -14,8 +14,8 @@
 set -uo pipefail
 
 # Nom bo'yicha kalit shu manzildan olinadi (forkda o'zgartirasan).
-KEYS_BASE='https://setup-ssh.muqimjon.uz/keys'
-TS_URL='https://setup-ssh.muqimjon.uz/ts-key'
+BASE='__BASE__'; case "$BASE" in http*) ;; *) BASE='https://setup-ssh.muqimjon.uz' ;; esac
+KEYS_BASE="$BASE/keys"; TS_URL="$BASE/ts-key"
 
 # ---------- Termux? ----------
 TERMUX=0

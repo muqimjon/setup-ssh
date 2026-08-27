@@ -30,8 +30,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Nom bo'yicha kalit shu manzildan olinadi (forkda o'zgartirasan).
-$KEYS_BASE = 'https://setup-ssh.muqimjon.uz/keys'
-$TS_URL    = 'https://setup-ssh.muqimjon.uz/ts-key'
+$BASE = '__BASE__'; if ($BASE -notmatch '^https?://') { $BASE = 'https://setup-ssh.muqimjon.uz' }
+$KEYS_BASE = "$BASE/keys"; $TS_URL = "$BASE/ts-key"
 
 function Hd ($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Ok ($t) { Write-Host "   [ok] $t" -ForegroundColor Green }

@@ -6,6 +6,14 @@ routes = [
   { pattern = "setup-ssh.muqimjon.uz", custom_domain = true }
 ]
 
-# Secretlar (wrangler secret put ... yoki dashboard):
-#   TS_API_TOKEN   - Tailscale API access token (/ts-key bir martalik key yasaydi)
-#   TS_TAILNET     - tailnet nomi (masalan '-')
+# Kompaniya (Ovoza) - alohida tailnet, alohida secretlar
+[env.ovoza]
+name = "ovoza-ssh"
+routes = [
+  { pattern = "ovoza-ssh.muqimjon.uz", custom_domain = true }
+]
+
+# Secretlar (har muhit uchun alohida):
+#   wrangler secret put TS_API_TOKEN            (shaxsiy)
+#   wrangler secret put TS_API_TOKEN --env ovoza (kompaniya)
+#   TS_TAILNET = '-'
