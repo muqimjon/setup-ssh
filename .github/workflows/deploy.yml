@@ -7,18 +7,23 @@ on:
     paths:
       - worker.js
       - wrangler.toml
+      - setup.sh
+      - setup.ps1
       - .github/workflows/deploy.yml
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [muqimjon, ovoza]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Deploy
-        run: npx --yes wrangler@latest deploy
+      - name: Deploy (${{ matrix.env }})
+        run: npx --yes wrangler@latest deploy --env ${{ matrix.env }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

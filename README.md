@@ -1,94 +1,135 @@
-# ssh-setup
+# setup-ssh
 
 Bitta buyruq bilan istalgan kompyuterni SSH orqali boshqariladigan qiladi.
-Operatsion tizimni (Windows / Linux / macOS / Termux), paket menejerini va qobiqni
-o'zi aniqlaydi, keyin qadamma-qadam so'raydi.
+OS'ni (Windows / Linux / macOS / Termux), paket menejerini va qobiqni o'zi aniqlaydi.
+Ixtiyoriy: Tailscale bilan istalgan joydan ulanish.
+
+**Kodda statik ma'lumot yo'q** — domen, repo, token: hammasi sozlamadan keladi.
+
+## O'zingizga deploy qilish
+
+```bash
+git clone <bu-repo> && cd setup-ssh
+npx wrangler deploy
+npx wrangler secret put TS_API_TOKEN     # Tailscale API tokeni
+```
+
+Tayyor: `https://setup-ssh.<akkauntingiz>.workers.dev`
+
+Kodga tegish shart emas. Skriptlar Worker ichiga bog'lanadi — repo public bo'lishi ham shart emas.
+
+### Sozlamalar (hammasi ixtiyoriy)
+
+| Nom | Turi | Ma'nosi |
+|---|---|---|
+| `TS_API_TOKEN` | secret | Tailscale API tokeni → `/ts-key` ishlaydi. Yo'q bo'lsa 501 |
+| `TS_TAILNET` | var | default `-` |
+| `KEY_TTL` | var | bir martalik kalit muddati, soniya (default 600) |
+| `KEYS_REPO` | var | `user/repo` → `/keys/<nom>.pub` reyestri. Yo'q bo'lsa `/keys` 501 |
+| `KEYS_BRANCH` | var | default `main` |
+
+Amalda **bitta** narsa yetarli: `TS_API_TOKEN`. Ochiq kalitlarni `gh:<github-user>`,
+URL yoki matn ko'rinishida bergani uchun `KEYS_REPO` ham majburiy emas.
+
+### O'z domeningiz (ixtiyoriy)
+
+`wrangler.toml` da `[env.<nom>]` bloki qo'shing:
+
+```toml
+[env.prod]
+name = "setup-ssh"
+routes = [{ pattern = "ssh.example.com", custom_domain = true }]
+```
+```bash
+npx wrangler deploy --env prod
+npx wrangler secret put TS_API_TOKEN --env prod
+```
 
 ## Ishlatish
 
 **Linux / macOS / Termux**
 ```bash
-curl -fsSL https://setup-ssh.muqimjon.uz | bash
+curl -fsSL <sizning-manzil> | bash
 ```
 
 **Windows** — PowerShell, *Run as administrator*
 ```powershell
-irm https://setup-ssh.muqimjon.uz | iex
+irm <sizning-manzil> | iex
 ```
 
-**Windows cmd**
-```cmd
-powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://setup-ssh.muqimjon.uz | iex"
-```
-
-## Kalit bilan (parametr orqali)
-
-`irm | iex` parametr qabul qilmaydi — skript blokiga o'rab beriladi:
-
+`irm | iex` parametr qabul qilmaydi — parametr kerak bo'lsa:
 ```powershell
-& ([scriptblock]::Create((irm https://setup-ssh.muqimjon.uz/setup.ps1))) -Key muqimjon,telefon
+& ([scriptblock]::Create((irm <manzil>/setup.ps1))) -Key gh:username
 ```
 ```bash
-curl -fsSL https://setup-ssh.muqimjon.uz | bash -s -- --key muqimjon telefon ish-pc
+curl -fsSL <manzil> | bash -s -- --key gh:username
 ```
 
-`--key` / `-Key` to'rt xil qiymatni tushunadi:
+### Ochiq kalit manbalari
 
 | Yozuv | Manba |
 |---|---|
-| `muqimjon` | `setup-ssh.muqimjon.uz/keys/muqimjon.pub` |
-| `gh:muqimjon` | `github.com/muqimjon.keys` |
-| `https://...` | istalgan URL |
-| `ssh-ed25519 AAAA...` | to'g'ridan-to'g'ri matn |
+| `gh:username` | `github.com/username.keys` |
+| `https://...` | istalgan URL (bir yoki ko'p qatorli) |
+| `ssh-ed25519 AAAA...` | to'g'ridan matn |
+| `nom` | `<manzil>/keys/nom.pub` (`KEYS_REPO` sozlangan bo'lsa) |
 
-## Bayroqlar
+Bir nechta: `--key a b c` (bash) / `-Key a,b,c` (PowerShell).
+
+### Bayroqlar
 
 | Parametr | Ma'nosi |
 |---|---|
-| `--yes` / `-Yes` | savol bermaydi, default javob |
+| `--yes` / `-Yes` | savol bermaydi |
 | `--mode` / `-Mode` | `lan` \| `tailscale` \| `tailscale-only` |
-| `--key` / `-Key` | joylanadigan kalit(lar) |
+| `--key` / `-Key` | joylanadigan ochiq kalit(lar) |
 | `--no-key` / `-NoKey` | kalit joylamaydi |
 | `--port` / `-Port` | SSH porti (default 22, Termux 8022) |
 | `--disable-password` / `-DisablePassword` | parol bilan kirishni o'chiradi |
-| `--ts-key` / `-TailscaleAuthKey` | Tailscale auth key |
+| `--ts-key` / `-TailscaleAuthKey` | o'z Tailscale auth key'ingiz |
+| `--ts-tag` / `-TsTag` | qurilma tegi (default `client`) |
+| `--member` / `-Member` | teglanmagan (member) qo'shilish — tasdiq kutadi |
+| `--base` / `-Base` | manba manzili (Worker'siz ishlatilganda) |
 
-## Default javoblar (faqat Enter)
+### Default javoblar (faqat Enter)
 
 | Savol | Default | Nega |
 |---|---|---|
-| Qayerdan kirasan | **Faqat LAN** | eng kam ochiqlik |
-| Kim kira oladi | **Faqat parol** | begona kalit taklif qilinmaydi |
+| Qayerdan kirasan | Faqat LAN | eng kam ochiqlik |
+| Kim kira oladi | Faqat parol | begona kalit taklif qilinmaydi |
 
 Parolni o'chirish oxirida alohida buyruq bilan beriladi — kalit ishlaganini
 tekshirgandan keyin.
 
-## Tailscale bir martalik kalit
+## Tailscale: kim kimga ulanadi
 
-`--mode tailscale` da kalit berilmasa, skript `setup-ssh.muqimjon.uz/ts-key`
-dan **bir martalik, kutish rejimidagi** auth key oladi (Worker OAuth orqali yasaydi).
-Qurilma tailnetga *pending* holatda qo'shiladi — admin panelda tasdiqlanadi.
+`/ts-key` bir martalik kalit beradi:
 
-Worker sozlanmagan bo'lsa `/ts-key` 501 qaytaradi va skript brauzer login'ga o'tadi.
+- **`?tag=client`** (skript defaulti) — qurilma `tag:client` bilan qo'shiladi
+- **tegsiz** (`--member`) — user-identity, Device Approval yoqiq bo'lsa tasdiq kutadi
 
-### Worker secretlari
+Asimmetrik kirish uchun tailnet ACL:
 
-```
-wrangler secret put TS_OAUTH_CLIENT_ID
-wrangler secret put TS_OAUTH_SECRET
-wrangler secret put TS_TAILNET
-```
-
-Tailscale admin da:
-- OAuth client — scope `auth_keys: write`, tag `tag:setup`
-- ACL: `"tagOwners": { "tag:setup": ["autogroup:admin"] }`
-- Settings → Device management → **Device approval: ON**
-
-## Deploy
-
-```bash
-npx wrangler deploy
+```json
+{
+  "tagOwners": { "tag:client": ["autogroup:admin"] },
+  "grants": [ {"src": ["autogroup:member"], "dst": ["*"], "ip": ["*"]} ]
+}
 ```
 
-CI/CD: `main` ga push qilinganda `.github/workflows/deploy.yml` avtomat deploy qiladi
-(GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`).
+Natija: siz mijoz qurilmalariga kirasiz, ular sizning qurilmalaringizni ko'rmaydi.
+
+## Ochiq kalitlar reyestri
+
+`KEYS_REPO` sozlangan bo'lsa, `keys/<nom>.pub` — **ko'p qatorli** ro'yxat:
+
+```
+ssh-ed25519 AAAA... ali@ovoza
+ssh-ed25519 BBB... vali@ovoza
+```
+
+`--key <nom>` desangiz hammasi joylanadi. Xodim ketsa — qatorini o'chirib,
+skriptni qayta ishga tushirasiz.
+
+> Yopiq kalitni hech qachon tarqatmang. Har kishi o'z kalitini yasaydi,
+> faqat ochiq qismi ro'yxatga tushadi — shunda bekor qilish va audit ishlaydi.
