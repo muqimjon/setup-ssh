@@ -81,7 +81,7 @@ Bir nechta: `--key a b c` (bash) / `-Key a,b,c` (PowerShell).
 | Parametr | Ma'nosi |
 |---|---|
 | `--yes` / `-y` / `-Yes` | savol bermaydi |
-| `--mode` / `-Mode` | `lan` | `tailscale` | `all` — bir nechta: `--mode lan tailscale` |\| `tailscale` \| `tailscale-only` |
+| `--mode` / `-Mode` | `lan` | `tailscale` | `all` — bir nechta: `--mode lan tailscale` |
 | `--key` / `-Key` | joylanadigan ochiq kalit(lar) |
 | `--no-key` / `-NoKey` | kalit joylamaydi |
 | `--port` / `-Port` | SSH porti (default 22, Termux 8022) |
@@ -97,6 +97,7 @@ Bir nechta: `--key a b c` (bash) / `-Key a,b,c` (PowerShell).
 |---|---|---|
 | Qayerdan kirasan | Faqat LAN | eng kam ochiqlik |
 | Kim kira oladi | Faqat parol | begona kalit taklif qilinmaydi |
+| Parol bilan kirish | kalit joylansa **o'chadi** | kalit ishlagach parol keraksiz |
 
 Parolni o'chirish oxirida alohida buyruq bilan beriladi — kalit ishlaganini
 tekshirgandan keyin.
