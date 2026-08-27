@@ -24,20 +24,29 @@ param(
     [switch]$DisablePassword,
     [string]$TailscaleAuthKey,
     [string]$TsTag,
-    [switch]$Member
+    [switch]$Member,
+    [string]$Base
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Nom bo'yicha kalit shu manzildan olinadi (forkda o'zgartirasan).
-$BASE = '__BASE__'; if ($BASE -notmatch '^https?://') { $BASE = 'https://setup-ssh.muqimjon.uz' }
-$KEYS_BASE = "$BASE/keys"; $TS_URL = "$BASE/ts-key"
+$BaseUrl = '__BASE__'; if ($BaseUrl -notmatch '^https?://') { $BaseUrl = '' }
+if ($Base) { $BaseUrl = $Base.TrimEnd("/") }
+$KEYS_BASE = if ($BaseUrl) { "$BaseUrl/keys" } else { "" }
+$TS_URL    = if ($BaseUrl) { "$BaseUrl/ts-key" } else { "" }
 
 function Hd ($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Ok ($t) { Write-Host "   [ok] $t" -ForegroundColor Green }
 function Wa ($t) { Write-Host "   [!]  $t" -ForegroundColor Yellow }
 function Er ($t) { Write-Host "`n   [xato] $t" -ForegroundColor Red; exit 1 }
 function Line { Write-Host ("-" * 58) -ForegroundColor DarkGray }
+# Kalit izohi (GitHub .keys izohsiz beradi) - bo'sh bo'lsa qisqa barmoq izi
+function KeyLabel([string]$k) {
+    $p = $k -split "s+"
+    if ($p.Count -ge 3 -and $p[2]) { return $p[2] }
+    if ($p.Count -ge 2) { return $p[0] + " ..." + $p[1].Substring([Math]::Max(0, $p[1].Length - 10)) }
+    return "?"
+}
 
 function Ask([string]$Q, [string[]]$Opts, [int]$Def) {
     if ($Yes) { return $Def }
@@ -147,7 +156,7 @@ if ($useTs -and -not $TailscaleAuthKey -and -not $Yes) {
 Line
 Write-Host "  BAJARILADIGAN ISHLAR" -ForegroundColor Yellow
 Write-Host "    - OpenSSH Server o'rnatiladi, avtomatik ishga tushadi (port $Port)"
-if ($keys) { foreach ($k in $keys) { Write-Host "    - Kalit: $((($k -split ' ')[2]))" } }
+if ($keys) { foreach ($k in $keys) { Write-Host "    - Kalit: $(KeyLabel $k)" } }
 else       { Write-Host "    - Kalit joylanmaydi (parol bilan kiriladi)" }
 if ($DisablePassword) { Write-Host "    - Parol bilan kirish O'CHIRILADI" -ForegroundColor Yellow }
 if ($useLan) { Write-Host "    - Firewall LAN uchun ochiladi, tarmoq Private qilinadi" }
@@ -192,8 +201,8 @@ else {
         $body = ($k -split ' ')[1]
         if ($cur -notmatch [regex]::Escape($body)) {
             Add-Content $kf $k -Encoding utf8; $cur += "`n$k"
-            Ok "qo'shildi: $((($k -split ' ')[2]))"
-        } else { Ok "allaqachon bor: $((($k -split ' ')[2]))" }
+            Ok "qo'shildi: $(KeyLabel $k)"
+        } else { Ok "allaqachon bor: $(KeyLabel $k)" }
     }
     icacls $kf /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F" | Out-Null
     Ok "huquqlar to'g'irlandi"

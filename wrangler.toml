@@ -1,3 +1,6 @@
+# Fork qilsangiz: name, routes va REPO ni o'zingiznikiga almashtiring.
+# Kodda hech qanday statik domen/repo yo'q - hammasi shu yerdan.
+
 name = "setup-ssh"
 main = "worker.js"
 compatibility_date = "2026-01-01"
@@ -6,14 +9,26 @@ routes = [
   { pattern = "setup-ssh.muqimjon.uz", custom_domain = true }
 ]
 
-# Kompaniya (Ovoza) - alohida tailnet, alohida secretlar
+[vars]
+REPO = "muqimjon/setup-ssh"   # skriptlar va keys/ shu repodan olinadi
+BRANCH = "main"
+TS_TAILNET = "-"
+KEY_TTL = "600"               # bir martalik Tailscale kaliti muddati (soniya)
+
+# ---- Ikkinchi tenant (alohida tailnet / alohida jamoa) ----
+# Har tenant o'z domeni + o'z TS_API_TOKEN secreti bilan ishlaydi.
 [env.ovoza]
 name = "ovoza-ssh"
 routes = [
   { pattern = "ovoza-ssh.muqimjon.uz", custom_domain = true }
 ]
 
-# Secretlar (har muhit uchun alohida):
-#   wrangler secret put TS_API_TOKEN            (shaxsiy)
-#   wrangler secret put TS_API_TOKEN --env ovoza (kompaniya)
-#   TS_TAILNET = '-'
+[env.ovoza.vars]
+REPO = "muqimjon/setup-ssh"
+BRANCH = "main"
+TS_TAILNET = "-"
+KEY_TTL = "600"
+
+# Secretlar (kodda EMAS, har muhitga alohida):
+#   npx wrangler secret put TS_API_TOKEN
+#   npx wrangler secret put TS_API_TOKEN --env ovoza

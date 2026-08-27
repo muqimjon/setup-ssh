@@ -1,4 +1,4 @@
-# Ovoza kompaniyasi - mas'ul xodimlar ochiq kalitlari.
-# Har xodim O'Z kalitini yasaydi, faqat OCHIQ qismi shu yerga qo'shiladi.
-# Xodim ketsa - uning qatorini o'chirib, skriptni qayta ishga tushirasan.
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG80CU1djJHCWmgpSyWusqfT1zU+CqDwxw0gC4x6Vk84 muqimjon@ovoza
+# Ovoza - mas'ul xodimlar ochiq kalitlari (har qatorda bittasi).
+# Har xodim O'Z kalitini yasaydi, faqat OCHIQ qismini shu yerga qo'shadi.
+# Xodim ketsa - qatorini o'chirib, mijoz serverlarida skriptni qayta ishlat.
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEspEHb9jQrAwSjoUURoqQlpS447ixT+KYWpit7+XRFu ovoza@ideapad

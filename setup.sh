@@ -14,8 +14,8 @@
 set -uo pipefail
 
 # Nom bo'yicha kalit shu manzildan olinadi (forkda o'zgartirasan).
-BASE='__BASE__'; case "$BASE" in http*) ;; *) BASE='https://setup-ssh.muqimjon.uz' ;; esac
-KEYS_BASE="$BASE/keys"; TS_URL="$BASE/ts-key"
+BASE='__BASE__'; case "$BASE" in http*) ;; *) BASE='' ;; esac
+KEYS_BASE=""; TS_URL=""
 
 # ---------- Termux? ----------
 TERMUX=0
@@ -42,11 +42,13 @@ while [ $# -gt 0 ]; do
         --disable-password) DISABLE_PW=1 ;;
         --ts-key)           TS_KEY="$2"; shift ;;
         --ts-tag)           TSTAG="$2"; shift ;;
+        --base)             BASE="$2"; shift ;;
         --member)           MEMBER=1 ;;
         *) echo "noma'lum parametr: $1"; exit 1 ;;
     esac
     shift
 done
+[ -n "$BASE" ] && { KEYS_BASE="$BASE/keys"; TS_URL="$BASE/ts-key"; }
 
 C_CY=$'\033[36m'; C_GR=$'\033[32m'; C_YL=$'\033[33m'; C_RD=$'\033[31m'
 C_GY=$'\033[90m'; C_WH=$'\033[97m'; C_0=$'\033[0m'
@@ -55,6 +57,14 @@ ok()   { printf "   %s[ok]%s %s\n" "$C_GR" "$C_0" "$1"; }
 wa()   { printf "   %s[!]%s  %s\n"  "$C_YL" "$C_0" "$1"; }
 er()   { printf "\n   %s[xato]%s %s\n" "$C_RD" "$C_0" "$1"; exit 1; }
 line() { printf "%s%s%s\n" "$C_GY" "----------------------------------------------------------" "$C_0"; }
+# Kalit izohi (GitHub .keys izohsiz beradi)
+key_label() {
+    local c; c=$(printf "%s" "$1" | cut -d" " -f3-)
+    if [ -n "$c" ]; then printf "%s
+" "$c"
+    else printf "%s ...%s
+" "$(printf "%s" "$1" | cut -d" " -f1)" "$(printf "%s" "$1" | cut -d" " -f2 | tail -c 11)"; fi
+}
 
 TTY=/dev/tty
 [ -r $TTY ] || { TTY=""; YES=1; }
@@ -190,7 +200,8 @@ fi
 line
 printf "  %sBAJARILADIGAN ISHLAR%s\n" "$C_YL" "$C_0"
 echo "    - openssh-server o'rnatiladi, port $PORT"
-if [ -n "$KEYS" ]; then echo "$KEYS" | awk '{print "    - Kalit: " $3}'
+if [ -n "$KEYS" ]; then printf '%s
+' "$KEYS" | while IFS= read -r l; do [ -n "$l" ] && echo "    - Kalit: $(key_label "$l")"; done
 else echo "    - Kalit joylanmaydi (parol bilan kiriladi)"; fi
 [ "$DISABLE_PW" = "1" ] && echo "    - Parol bilan kirish O'CHIRILADI"
 if [ "$TERMUX" = "1" ]; then
@@ -247,8 +258,8 @@ else
     while IFS= read -r k; do
         [ -z "$k" ] && continue
         b=$(echo "$k" | awk '{print $2}')
-        if grep -qF "$b" ~/.ssh/authorized_keys 2>/dev/null; then ok "allaqachon bor: $(echo "$k" | awk '{print $3}')"
-        else echo "$k" >> ~/.ssh/authorized_keys; ok "qo'shildi: $(echo "$k" | awk '{print $3}')"; fi
+        if grep -qF "$b" ~/.ssh/authorized_keys 2>/dev/null; then ok "allaqachon bor: $(key_label "$k")"
+        else echo "$k" >> ~/.ssh/authorized_keys; ok "qo'shildi: $(key_label "$k")"; fi
     done <<< "$KEYS"
 fi
 
