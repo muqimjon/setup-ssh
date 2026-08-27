@@ -1,4 +1,6 @@
-# Ovoza - mijoz qurilmalariga kirish huquqiga ega xodimlar (har qatorda bittasi).
-# Har xodim O'Z kalitini yasaydi, faqat OCHIQ qismini shu yerga qo'shadi.
+# Ovoza - mijoz qurilmalariga kirish huquqiga ega xodimlar.
+# Har xodim O'Z kalitini yasaydi, faqat OCHIQ qismi shu yerga qo'shiladi.
 # Xodim ketsa - qatorini o'chirib, mijoz serverlarida skriptni qayta ishlat.
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIESeUm68zg5P2opFAOTV9XeYdNHTh/WR4k7mOPpPP36x ovoza@client
+
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAv3p/GToQGDHZuwxO1o5c9ik2YbVeDCuChnexS7g4+F muqimjon@device
+# ssh-ed25519 AAAA...  xodim@device      <- yangi xodim shu yerga
