@@ -80,12 +80,12 @@ Bir nechta: `--key a b c` (bash) / `-Key a,b,c` (PowerShell).
 
 | Parametr | Ma'nosi |
 |---|---|
-| `--yes` / `-Yes` | savol bermaydi |
-| `--mode` / `-Mode` | `lan` \| `tailscale` \| `tailscale-only` |
+| `--yes` / `-y` / `-Yes` | savol bermaydi |
+| `--mode` / `-Mode` | `lan` | `tailscale` | `all` — bir nechta: `--mode lan tailscale` |\| `tailscale` \| `tailscale-only` |
 | `--key` / `-Key` | joylanadigan ochiq kalit(lar) |
 | `--no-key` / `-NoKey` | kalit joylamaydi |
 | `--port` / `-Port` | SSH porti (default 22, Termux 8022) |
-| `--disable-password` / `-DisablePassword` | parol bilan kirishni o'chiradi |
+| `--disable-password` / `--keep-password` | parolni majburan o'chirish / qoldirish (default: kalit bo'lsa o'chadi) |
 | `--ts-key` / `-TailscaleAuthKey` | o'z Tailscale auth key'ingiz |
 | `--ts-tag` / `-TsTag` | qurilma tegi (default `client`) |
 | `--member` / `-Member` | teglanmagan (member) qo'shilish — tasdiq kutadi |

@@ -1,4 +1,4 @@
-# Ovoza - mas'ul xodimlar ochiq kalitlari (har qatorda bittasi).
+# Ovoza - mijoz qurilmalariga kirish huquqiga ega xodimlar (har qatorda bittasi).
 # Har xodim O'Z kalitini yasaydi, faqat OCHIQ qismini shu yerga qo'shadi.
 # Xodim ketsa - qatorini o'chirib, mijoz serverlarida skriptni qayta ishlat.
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEspEHb9jQrAwSjoUURoqQlpS447ixT+KYWpit7+XRFu ovoza@ideapad
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIESeUm68zg5P2opFAOTV9XeYdNHTh/WR4k7mOPpPP36x ovoza@client

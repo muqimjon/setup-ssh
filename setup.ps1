@@ -15,12 +15,13 @@
 #>
 [CmdletBinding()]
 param(
-    [switch]$Yes,
-    [ValidateSet('lan','tailscale','tailscale-only')][string]$Mode,
+    [Alias('y')][switch]$Yes,
+    [ValidateSet('lan','tailscale','all')][string[]]$Mode,
     [string[]]$Key,
     [switch]$NoKey,
     [int]$Port = 22,
     [switch]$DisablePassword,
+    [switch]$KeepPassword,
     [string]$TailscaleAuthKey,
     [string]$TsTag,
     [switch]$Member,
@@ -120,17 +121,27 @@ Write-Host "  IP           : $(($ips | ForEach-Object { $_.IPAddress }) -join ',
 Line
 
 # ---------- 1-savol ----------
-$modeKeys = @('lan','tailscale','tailscale-only')
-if ($Mode) { $mi = [array]::IndexOf($modeKeys, $Mode) }
-else {
-    $mi = Ask "Qayerdan kirasan?" @(
+# Rejim: bir yoki bir nechta (-Mode lan,tailscale) yoki 'all'. Berilmasa - so'raladi.
+$useLan = $false; $useTs = $false
+if ($Mode) {
+    foreach ($m in $Mode) {
+        switch ($m) {
+            'lan'       { $useLan = $true }
+            'tailscale' { $useTs  = $true }
+            'all'       { $useLan = $true; $useTs = $true }
+        }
+    }
+} else {
+    switch (Ask "Qayerdan kirasan?" @(
         'Faqat shu tarmoqdan (LAN)'
-        'LAN + istalgan joydan (Tailscale)'
-        'Faqat istalgan joydan (Tailscale, LAN yopiq)'
-    ) 0
+        'Faqat istalgan joydan (Tailscale)'
+        'Ikkalasi (LAN + Tailscale)'
+    ) 0) {
+        0 { $useLan = $true }
+        1 { $useTs  = $true }
+        2 { $useLan = $true; $useTs = $true }
+    }
 }
-$useLan = $modeKeys[$mi] -in @('lan','tailscale')
-$useTs  = $modeKeys[$mi] -in @('tailscale','tailscale-only')
 
 # ---------- kalitlar ----------
 $keys = @()
@@ -148,6 +159,10 @@ else {
 }
 $keys = $keys | Select-Object -Unique
 
+# Parol bilan kirish: bayroq berilmagan bo'lsa AVTOMAT.
+# Kalit joylansa -> parol O'CHADI. Kalit yo'q bo'lsa -> QOLADI (qulf ichida qolmaslik uchun).
+$noPass = if ($KeepPassword) { $false } elseif ($DisablePassword) { $true } else { [bool]$keys }
+
 if ($useTs -and -not $TailscaleAuthKey -and -not $Yes) {
     $TailscaleAuthKey = AskText "Tailscale auth key (bo'sh = avtomatik yoki brauzer)"
 }
@@ -157,7 +172,7 @@ Write-Host "  BAJARILADIGAN ISHLAR" -ForegroundColor Yellow
 Write-Host "    - OpenSSH Server o'rnatiladi, avtomatik ishga tushadi (port $Port)"
 if ($keys) { foreach ($k in $keys) { Write-Host "    - Kalit: $(KeyLabel $k)" } }
 else       { Write-Host "    - Kalit joylanmaydi (parol bilan kiriladi)" }
-if ($DisablePassword) { Write-Host "    - Parol bilan kirish O'CHIRILADI" -ForegroundColor Yellow }
+if ($noPass) { Write-Host "    - Parol bilan kirish O'CHIRILADI" -ForegroundColor Yellow }
 if ($useLan) { Write-Host "    - Firewall LAN uchun ochiladi, tarmoq Private qilinadi" }
 else         { Write-Host "    - Firewall LAN uchun OCHILMAYDI" }
 if ($useTs)  { Write-Host "    - Tailscale o'rnatiladi va ulanadi" }
@@ -187,9 +202,9 @@ function SetD([string]$T, [string]$N, [string]$V) {
 }
 $txt = SetD $txt 'Port'                   "$Port"
 $txt = SetD $txt 'PubkeyAuthentication'   'yes'
-$txt = SetD $txt 'PasswordAuthentication' $(if ($DisablePassword) { 'no' } else { 'yes' })
+$txt = SetD $txt 'PasswordAuthentication' $(if ($noPass) { 'no' } else { 'yes' })
 Set-Content $cfg $txt -Encoding utf8
-Ok "port=$Port, kalit=yoq, parol=$(if($DisablePassword){"yo'q"}else{'ha'})"
+Ok "port=$Port, kalit=yoq, parol=$(if($noPass){"yo'q"}else{'ha'})"
 
 Hd "3) Ochiq kalitlar"
 if (-not $keys) { Wa "joylanmadi - parol bilan kiriladi" }
@@ -272,7 +287,7 @@ if ($useTs) {
     if ($tsip) { Write-Host "    ssh $p$env:USERNAME@$tsip   (istalgan joydan)" }
     Write-Host "    ssh $p$env:USERNAME@$(($env:COMPUTERNAME).ToLower())   (MagicDNS)"
 }
-if ($keys -and -not $DisablePassword) {
+if ($keys -and -not $noPass) {
     Write-Host ""
     Wa "Kalit bilan kirganingni tekshirgach parolni o'chir:"
     Write-Host '      (gc $env:ProgramData\ssh\sshd_config) -replace "^#?PasswordAuthentication.*","PasswordAuthentication no" | sc $env:ProgramData\ssh\sshd_config; Restart-Service sshd' -ForegroundColor DarkGray

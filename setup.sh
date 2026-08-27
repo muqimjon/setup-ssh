@@ -23,14 +23,20 @@ TERMUX=0
 case "${PREFIX:-}" in *com.termux*) TERMUX=1 ;; esac
 [ -d /data/data/com.termux/files ] && TERMUX=1
 
-YES=0; MODE=""; NOKEY=0; DISABLE_PW=0; TS_KEY=""; TSTAG=""; MEMBER=0
+YES=0; MODES=""; NOKEY=0; DISABLE_PW=""; TS_KEY=""; TSTAG=""; MEMBER=0
 PORT=$([ "$TERMUX" = "1" ] && echo 8022 || echo 22)
 KEYARGS=()
 NL=$'\n'
 while [ $# -gt 0 ]; do
     case "$1" in
         --yes|-y)           YES=1 ;;
-        --mode)             MODE="$2"; shift ;;
+        --mode)
+            shift
+            while [ $# -gt 0 ]; do
+                case "$1" in -*) break ;; esac
+                MODES="$MODES $1"; shift
+            done
+            continue ;;
         --key)
             shift
             while [ $# -gt 0 ]; do
@@ -41,6 +47,7 @@ while [ $# -gt 0 ]; do
         --no-key)           NOKEY=1 ;;
         --port)             PORT="$2"; shift ;;
         --disable-password) DISABLE_PW=1 ;;
+        --keep-password)    DISABLE_PW=0 ;;
         --ts-key)           TS_KEY="$2"; shift ;;
         --ts-tag)           TSTAG="$2"; shift ;;
         --base)             BASE="$2"; shift ;;
@@ -156,23 +163,28 @@ echo "  IP           : $IPS"
 line
 
 # ---------- 1-savol ----------
-MODE_KEYS=(lan tailscale tailscale-only)
-if [ -n "$MODE" ]; then
-    mi=-1; for i in "${!MODE_KEYS[@]}"; do [ "${MODE_KEYS[$i]}" = "$MODE" ] && mi=$i; done
-    [ "$mi" = "-1" ] && er "noma'lum rejim: $MODE"
+# Rejim: bir yoki bir nechta (lan tailscale) yoki 'all'. Berilmasa - so'raladi.
+USE_LAN=0; USE_TS=0
+if [ -n "$MODES" ]; then
+    for m in $MODES; do
+        case "$m" in
+            lan)       USE_LAN=1 ;;
+            tailscale) USE_TS=1 ;;
+            all)       USE_LAN=1; USE_TS=1 ;;
+            *) er "noma'lum rejim: $m (lan | tailscale | all)" ;;
+        esac
+    done
 else
     ask "Qayerdan kirasan?" 0 \
         "Faqat shu tarmoqdan (LAN)" \
-        "LAN + istalgan joydan (Tailscale)" \
-        "Faqat istalgan joydan (Tailscale, LAN yopiq)"
-    mi="$ASK_RESULT"
+        "Faqat istalgan joydan (Tailscale)" \
+        "Ikkalasi (LAN + Tailscale)"
+    case "$ASK_RESULT" in
+        0) USE_LAN=1 ;;
+        1) USE_TS=1 ;;
+        2) USE_LAN=1; USE_TS=1 ;;
+    esac
 fi
-USE_LAN=0; USE_TS=0
-case "${MODE_KEYS[$mi]}" in
-    lan)            USE_LAN=1 ;;
-    tailscale)      USE_LAN=1; USE_TS=1 ;;
-    tailscale-only) USE_TS=1 ;;
-esac
 
 # ---------- kalitlar ----------
 KEYS=""
@@ -193,6 +205,13 @@ else
     fi
 fi
 KEYS=$(echo "$KEYS" | grep -E '^(ssh-|ecdsa-)' | awk '!seen[$2]++' || true)
+
+# Parol bilan kirish: bayroq berilmagan bo'lsa AVTOMAT.
+# Kalit joylansa -> parol O'CHADI (mijozning parolini izlab o'tirmaslik uchun).
+# Kalit yo'q bo'lsa -> parol QOLADI (aks holda qulf ichida qolinadi).
+if [ -z "$DISABLE_PW" ]; then
+    [ -n "$KEYS" ] && DISABLE_PW=1 || DISABLE_PW=0
+fi
 
 if [ "$USE_TS" = "1" ] && [ -z "$TS_KEY" ] && [ "$YES" = "0" ] && [ "$TERMUX" = "0" ]; then
     ask_text "Tailscale auth key (bo'sh = avtomatik yoki brauzer)"; TS_KEY="$ASK_RESULT"
