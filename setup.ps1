@@ -1,18 +1,17 @@
 <#
-    setup-ssh.muqimjon.uz  -  Windows
+    setup-ssh  -  Windows
     SSH serverni o'rnatadi va (ixtiyoriy) Tailscale bilan istalgan joydan
-    ulanadigan qiladi.
+    ulanadigan qiladi. Manba manzili Worker tomonidan yoziladi (-Base bilan ham beriladi).
 
     Ishga tushirish (PowerShell, "Run as administrator"):
-        irm https://setup-ssh.muqimjon.uz | iex
+        irm <manzil> | iex
 
-    Kalit bilan (faqat bitta savol beriladi):
-        & ([scriptblock]::Create((irm https://setup-ssh.muqimjon.uz/setup.ps1))) -Key muqimjon
-        ... -Key muqimjon,telefon,ish-pc
-        ... -Key "ssh-ed25519 AAAA... izoh"
+    Parametr bilan (irm|iex parametr qabul qilmaydi):
+        & ([scriptblock]::Create((irm <manzil>/setup.ps1))) -Key gh:username
+        ... -Key nom1,nom2  |  -Key "ssh-ed25519 AAAA... izoh"
 
     Savolsiz:
-        ... -Key muqimjon -Mode tailscale -TailscaleAuthKey tskey-auth-xxx -Yes
+        ... -Yes -Mode tailscale-only -Key gh:username
 #>
 [CmdletBinding()]
 param(
@@ -102,7 +101,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     Er @"
 Administrator huquqi kerak.
 PowerShell ni "Run as administrator" bilan ochib qayta urinib ko'r:
-    irm https://setup-ssh.muqimjon.uz | iex
+    irm <manzil> | iex
 "@
 }
 
@@ -113,7 +112,7 @@ $ips = Get-NetIPAddress -AddressFamily IPv4 |
 Clear-Host
 Line
 Write-Host "  SSH SETUP" -ForegroundColor Cyan -NoNewline
-Write-Host "   setup-ssh.muqimjon.uz"
+Write-Host "   $(if ($BaseUrl) { $BaseUrl } else { "setup-ssh" })"
 Line
 Write-Host "  Tizim        : $os ($env:PROCESSOR_ARCHITECTURE)"
 Write-Host "  Kompyuter    : $env:COMPUTERNAME          Foydalanuvchi: $env:USERNAME"
@@ -140,7 +139,7 @@ elseif ($Key) { foreach ($k in $Key) { $keys += Resolve-Key $k } }
 else {
     # bayroq berilmagan - yagona qo'shimcha savol
     if ((Ask "Kim kira oladi?" @('Faqat parol bilan', 'Ochiq kalit qo''shaman') 0) -eq 1) {
-        $t = AskText "Kalit nomlari (probel bilan bir nechta: muqimjon telefon https://...)"
+        $t = AskText "Kalit nomlari (probel bilan bir nechta: gh:user nom https://...)"
         if ($t -match '^(ssh-|ecdsa-)') { $keys = Resolve-Key $t }
         elseif ($t) {
             foreach ($x in ($t -split '[\s,]+' | Where-Object { $_ })) { $keys += Resolve-Key $x }

@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# setup-ssh.muqimjon.uz  -  Linux / macOS / Termux (Android)
+# setup-ssh  -  Linux / macOS / Termux (Android)
+# Manba manzili Worker tomonidan yoziladi (--base bilan ham beriladi).
 #
-#   curl -fsSL https://setup-ssh.muqimjon.uz | bash
+#   curl -fsSL <manzil> | bash
 #
 # Kalit bilan (faqat bitta savol beriladi):
-#   ... | bash -s -- --key muqimjon
-#   ... | bash -s -- --key muqimjon telefon ish-pc
+#   ... | bash -s -- --key gh:username
+#   ... | bash -s -- --key nom1 nom2
 #   ... | bash -s -- --key "ssh-ed25519 AAAA... izoh"
 #
 # Savolsiz:
-#   ... | bash -s -- --key muqimjon --mode tailscale --ts-key tskey-auth-xxx --yes
+#   ... | bash -s -- --yes --mode tailscale-only --key gh:username
 
 set -uo pipefail
 
@@ -145,7 +146,8 @@ IPS=$(ip -4 -o addr show scope global 2>/dev/null | awk '{split($4,a,"/"); print
 
 clear 2>/dev/null || true
 line
-printf "  %sSSH SETUP%s   setup-ssh.muqimjon.uz\n" "$C_CY" "$C_0"
+printf "  %sSSH SETUP%s   %s
+" "$C_CY" "$C_0" "${BASE:-setup-ssh}"
 line
 echo "  Tizim        : $OS_NAME ($ARCH)   paket: ${PM:-aniqlanmadi}"
 echo "  Kompyuter    : $(hostname)          Foydalanuvchi: $(whoami)"
@@ -180,7 +182,7 @@ elif [ "${#KEYARGS[@]}" -gt 0 ]; then
 else
     ask "Kim kira oladi?" 0 "Faqat parol bilan" "Ochiq kalit qo'shaman"
     if [ "$ASK_RESULT" = "1" ]; then
-        ask_text "Kalit nomlari (probel bilan bir nechta: muqimjon telefon https://...)"
+        ask_text "Kalit nomlari (probel bilan bir nechta: gh:user nom https://...)"
         case "$ASK_RESULT" in
             "") ;;
             ssh-*|ecdsa-*) KEYS="$(resolve_key "$ASK_RESULT")$NL" ;;
@@ -327,14 +329,14 @@ if [ "$TERMUX" = "1" ]; then
     printf "
   %sTermux bitta foydalanuvchili - istalgan nom bilan kirsa bo'ladi:%s
 " "$C_GY" "$C_0"
-    for ip in $IPS; do echo "    ssh ${P}muqimjon@$ip"; break; done
+    for ip in $IPS; do echo "    ssh ${P}user@$ip"; break; done
     printf "
   %s~/.ssh/config ga qo'shsang - shunchaki 'ssh phone':%s
 " "$C_GY" "$C_0"
     echo "    Host phone"
     for ip in $IPS; do echo "        HostName $ip"; break; done
     echo "        Port $PORT"
-    echo "        User muqimjon"
+    echo "        User user"
 fi
 if [ "$USE_TS" = "1" ]; then
     TSIP=$(tailscale ip -4 2>/dev/null | head -1)
