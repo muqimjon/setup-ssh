@@ -3,4 +3,5 @@
 # Xodim ketsa - qatorini o'chirib, mijoz serverlarida skriptni qayta ishlat.
 
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAv3p/GToQGDHZuwxO1o5c9ik2YbVeDCuChnexS7g4+F muqimjon@device
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGrX8xoLWpROdA2/fElo5e3223WH+U4h21USzRgaKaFJ siddi@Avazbek
 # ssh-ed25519 AAAA...  xodim@device      <- yangi xodim shu yerga
