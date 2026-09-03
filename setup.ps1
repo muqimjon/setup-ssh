@@ -16,7 +16,7 @@
 [CmdletBinding()]
 param(
     [Alias('y')][switch]$Yes,
-    [ValidateSet('lan','tailscale','all')][string[]]$Mode,
+    [string[]]$Mode,
     [string[]]$Key,
     [switch]$NoKey,
     [int]$Port = 22,
@@ -41,11 +41,11 @@ $TS_URL    = if ($BaseUrl) { "$BaseUrl/ts-key" } else { "" }
 function Hd ($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Ok ($t) { Write-Host "   [ok] $t" -ForegroundColor Green }
 function Wa ($t) { Write-Host "   [!]  $t" -ForegroundColor Yellow }
-function Er ($t) { Write-Host "`n   [xato] $t" -ForegroundColor Red; exit 1 }
+function Er ($t) { Write-Host "`n   [xato] $t" -ForegroundColor Red; throw $t }
 function Line { Write-Host ("-" * 58) -ForegroundColor DarkGray }
 # Kalit izohi (GitHub .keys izohsiz beradi) - bo'sh bo'lsa qisqa barmoq izi
 function KeyLabel([string]$k) {
-    $p = $k -split "s+"
+    $p = $k -split '\s+'
     if ($p.Count -ge 3 -and $p[2]) { return $p[2] }
     if ($p.Count -ge 2) { return $p[0] + " ..." + $p[1].Substring([Math]::Max(0, $p[1].Length - 10)) }
     return "?"
@@ -133,6 +133,7 @@ if ($Mode) {
             'lan'       { $useLan = $true }
             'tailscale' { $useTs  = $true }
             'all'       { $useLan = $true; $useTs = $true }
+            default     { Er "-Mode noto'g'ri: $m (lan | tailscale | all)" }
         }
     }
 } else {
@@ -185,23 +186,50 @@ if ($useLan) { Write-Host "    - Firewall LAN uchun ochiladi, tarmoq Private qil
 else         { Write-Host "    - Firewall LAN uchun OCHILMAYDI" }
 if ($useTs)  { Write-Host "    - Tailscale o'rnatiladi va ulanadi" }
 Line
-if (-not (AskYN "Davom etamizmi?" $true)) { Write-Host "  Bekor qilindi."; exit 0 }
+if (-not (AskYN "Davom etamizmi?" $true)) { Write-Host "  Bekor qilindi."; return }
 
 # ================= BAJARISH =================
 
 Hd "1) OpenSSH Server"
-$cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*'
-if ($cap.State -ne 'Installed') {
-    Write-Host "   o'rnatilmoqda..."
-    Add-WindowsCapability -Online -Name $cap.Name | Out-Null
+if (Get-Service sshd -ErrorAction SilentlyContinue) { Ok "allaqachon o'rnatilgan" }
+else {
+    # Windows komponenti (FoD) Windows Update'ga tayanadi - o'chirilgan tizimlarda
+    # "Access is denied" beradi. Bunday holda Microsoft'ning MSI paketiga o'tamiz.
+    $cap  = try { Get-WindowsCapability -Online -Name 'OpenSSH.Server*' } catch { $null }
+    $done = $false
+    if ($cap) {
+        Write-Host "   Windows komponenti o'rnatilmoqda..."
+        try { Add-WindowsCapability -Online -Name $cap.Name | Out-Null; $done = $true }
+        catch { Wa "Windows komponenti o'rnatilmadi: $($_.Exception.Message.Trim())" }
+    }
+    if (-not $done) {
+        Wa "zaxira yo'l: Microsoft Win32-OpenSSH (MSI)"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $msiName = switch ($env:PROCESSOR_ARCHITECTURE) {
+            'ARM64' { 'OpenSSH-ARM64.msi' }
+            'AMD64' { 'OpenSSH-Win64.msi' }
+            default { 'OpenSSH-Win32.msi' }
+        }
+        $rel = Invoke-RestMethod 'https://api.github.com/repos/PowerShell/Win32-OpenSSH/releases/latest' `
+                                 -Headers @{ 'user-agent' = 'setup-ssh' } -TimeoutSec 30
+        $url = ($rel.assets | Where-Object { $_.name -eq $msiName }).browser_download_url
+        if (-not $url) { Er "OpenSSH MSI topilmadi: $msiName" }
+        $msi = Join-Path $env:TEMP $msiName
+        Invoke-WebRequest $url -OutFile $msi -UseBasicParsing
+        $p = Start-Process msiexec -ArgumentList "/i `"$msi`" /qn /norestart ADDLOCAL=Server" -Wait -PassThru
+        Remove-Item $msi -Force -ErrorAction SilentlyContinue
+        if ($p.ExitCode -ne 0) { Er "MSI o'rnatilmadi (kod $($p.ExitCode))" }
+    }
+    if (-not (Get-Service sshd -ErrorAction SilentlyContinue)) { Er "sshd xizmati topilmadi" }
     Ok "o'rnatildi"
-} else { Ok "allaqachon o'rnatilgan" }
+}
 Set-Service sshd -StartupType Automatic
 if ((Get-Service sshd).Status -ne 'Running') { Start-Service sshd }
 Ok "sshd ishlayapti"
 
 Hd "2) sshd_config"
 $cfg = "$env:ProgramData\ssh\sshd_config"
+if (-not (Test-Path $cfg)) { Er "sshd_config topilmadi: $cfg" }
 Copy-Item $cfg "$cfg.bak" -Force -ErrorAction SilentlyContinue
 $txt = Get-Content $cfg -Raw
 function SetD([string]$T, [string]$N, [string]$V) {
