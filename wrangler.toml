@@ -39,7 +39,9 @@ TS_TAILNET = "-"
 KEY_TTL = "600"
 KEYS_REPO = "muqimjon/setup-ssh"
 KEYS_BRANCH = "main"
+DEFAULT_KEY = "muqimjon"
 DEFAULT_MODE = "all"
+DEFAULT_USER = "muqimjon"
 
 [env.ovoza]
 name = "ovoza-ssh"
