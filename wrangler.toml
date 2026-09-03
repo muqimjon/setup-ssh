@@ -23,6 +23,7 @@ KEY_TTL = "600"
 # KEYS_BRANCH = "main"
 # DEFAULT_KEY = "nom"          # --key berilmasa shu ishlatiladi
 # DEFAULT_MODE = "tailscale"   # --mode berilmasa savol o'rniga shu
+# DEFAULT_USER = "nom"         # shu nomli admin/sudo hisobi ochiladi
 
 # ============================================================
 # Quyidagilar - EGASINING o'z deploylari (namuna).
@@ -50,3 +51,4 @@ KEYS_REPO = "muqimjon/setup-ssh"
 KEYS_BRANCH = "main"
 DEFAULT_KEY = "ovoza"
 DEFAULT_MODE = "tailscale"
+DEFAULT_USER = "ovoza"

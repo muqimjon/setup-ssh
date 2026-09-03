@@ -10,7 +10,7 @@
 #   ... | bash -s -- --key "ssh-ed25519 AAAA... izoh"
 #
 # Savolsiz:
-#   ... | bash -s -- --yes --mode tailscale-only --key gh:username
+#   ... | bash -s -- --yes --mode tailscale --key gh:username
 
 set -uo pipefail
 
@@ -19,6 +19,7 @@ BASE='__BASE__'; case "$BASE" in http*) ;; *) BASE='' ;; esac
 # Worker tomonidan to'ldiriladi (env: DEFAULT_KEY / DEFAULT_MODE). Bo'sh bo'lsa - e'tiborsiz.
 DEF_KEY='__DEFAULT_KEY__';  case "$DEF_KEY"  in *DEFAULT_KEY*)  DEF_KEY=''  ;; esac
 DEF_MODE='__DEFAULT_MODE__'; case "$DEF_MODE" in *DEFAULT_MODE*) DEF_MODE='' ;; esac
+DEF_USER='__DEFAULT_USER__'; case "$DEF_USER" in *DEFAULT_USER*) DEF_USER='' ;; esac
 KEYS_BASE=""; TS_URL=""
 
 # ---------- Termux? ----------
@@ -26,7 +27,7 @@ TERMUX=0
 case "${PREFIX:-}" in *com.termux*) TERMUX=1 ;; esac
 [ -d /data/data/com.termux/files ] && TERMUX=1
 
-YES=0; MODES=""; NOKEY=0; DISABLE_PW=""; TS_KEY=""; TSTAG=""; MEMBER=0
+YES=0; MODES=""; NOKEY=0; DISABLE_PW=""; TS_KEY=""; TSTAG=""; MEMBER=0; SSH_USER=""
 PORT=$([ "$TERMUX" = "1" ] && echo 8022 || echo 22)
 KEYARGS=()
 NL=$'\n'
@@ -47,6 +48,7 @@ while [ $# -gt 0 ]; do
                 KEYARGS+=("$1"); shift
             done
             continue ;;
+        --user)             SSH_USER="$2"; shift ;;
         --no-key)           NOKEY=1 ;;
         --port)             PORT="$2"; shift ;;
         --disable-password) DISABLE_PW=1 ;;
@@ -60,6 +62,7 @@ while [ $# -gt 0 ]; do
     shift
 done
 [ -n "$BASE" ] && { KEYS_BASE="$BASE/keys"; TS_URL="$BASE/ts-key"; }
+[ -z "$SSH_USER" ] && SSH_USER="$DEF_USER"
 
 C_CY=$'\033[36m'; C_GR=$'\033[32m'; C_YL=$'\033[33m'; C_RD=$'\033[31m'
 C_GY=$'\033[90m'; C_WH=$'\033[97m'; C_0=$'\033[0m'
@@ -229,6 +232,7 @@ fi
 line
 printf "  %sBAJARILADIGAN ISHLAR%s\n" "$C_YL" "$C_0"
 echo "    - openssh-server o'rnatiladi, port $PORT"
+[ -n "$SSH_USER" ] && [ "$TERMUX" = "0" ] && echo "    - '$SSH_USER' sudo hisobi ochiladi (kirish shu nom bilan)"
 if [ -n "$KEYS" ]; then printf '%s
 ' "$KEYS" | while IFS= read -r l; do [ -n "$l" ] && echo "    - Kalit: $(key_label "$l")"; done
 else echo "    - Kalit joylanmaydi (parol bilan kiriladi)"; fi
@@ -279,20 +283,49 @@ set_d PubkeyAuthentication yes
 [ "$DISABLE_PW" = "1" ] && set_d PasswordAuthentication no || set_d PasswordAuthentication yes
 ok "port=$PORT, kalit=yoq, parol=$([ "$DISABLE_PW" = "1" ] && echo "yo'q" || echo ha)"
 
-H "3) Ochiq kalitlar"
+H "3) Boshqaruv hisobi"
+if [ "$TERMUX" = "1" ]; then
+    SSH_USER=$(id -un); wa "Termux bitta foydalanuvchili - alohida hisob ochilmaydi"
+elif [ -z "$SSH_USER" ]; then
+    SSH_USER=$(id -un); wa "alohida hisob ochilmadi - '$SSH_USER' bilan kiriladi"
+else
+    if id "$SSH_USER" >/dev/null 2>&1; then ok "hisob bor: $SSH_USER"
+    else
+        SH=/bin/bash; [ -x "$SH" ] || SH=/bin/sh
+        if command -v useradd >/dev/null 2>&1; then $SUDO useradd -m -s "$SH" "$SSH_USER"
+        else $SUDO adduser -D -s "$SH" "$SSH_USER"; fi || er "hisob ochilmadi: $SSH_USER"
+        $SUDO passwd -l "$SSH_USER" >/dev/null 2>&1 || true
+        ok "hisob ochildi: $SSH_USER (parol qulflangan - faqat kalit bilan kiriladi)"
+    fi
+    for g in sudo wheel; do
+        getent group "$g" >/dev/null 2>&1 || continue
+        $SUDO usermod -aG "$g" "$SSH_USER" 2>/dev/null || $SUDO adduser "$SSH_USER" "$g" 2>/dev/null || true
+    done
+    SUDOF="/etc/sudoers.d/$(printf '%s' "$SSH_USER" | tr -c 'a-zA-Z0-9_-' '_')"
+    echo "$SSH_USER ALL=(ALL) NOPASSWD:ALL" | $SUDO tee "$SUDOF" >/dev/null
+    $SUDO chmod 440 "$SUDOF"
+    ok "sudo huquqi berildi (parolsiz) - to'liq root"
+fi
+
+H "4) Ochiq kalitlar"
 if [ -z "$KEYS" ]; then wa "joylanmadi - parol bilan kiriladi"
 else
-    mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+    UHOME=$(getent passwd "$SSH_USER" 2>/dev/null | cut -d: -f6)
+    [ -n "$UHOME" ] || UHOME="$HOME"
+    AK="$UHOME/.ssh/authorized_keys"
+    $SUDO mkdir -p "$UHOME/.ssh" && $SUDO chmod 700 "$UHOME/.ssh"
+    $SUDO touch "$AK" && $SUDO chmod 600 "$AK"
     while IFS= read -r k; do
         [ -z "$k" ] && continue
         b=$(echo "$k" | awk '{print $2}')
-        if grep -qF "$b" ~/.ssh/authorized_keys 2>/dev/null; then ok "allaqachon bor: $(key_label "$k")"
-        else echo "$k" >> ~/.ssh/authorized_keys; ok "qo'shildi: $(key_label "$k")"; fi
+        if $SUDO grep -qF "$b" "$AK" 2>/dev/null; then ok "allaqachon bor: $(key_label "$k")"
+        else echo "$k" | $SUDO tee -a "$AK" >/dev/null; ok "qo'shildi: $(key_label "$k")"; fi
     done <<< "$KEYS"
+    $SUDO chown -R "$SSH_USER" "$UHOME/.ssh" 2>/dev/null || true
+    ok "joy: $AK"
 fi
 
-H "4) Ishga tushirish"
+H "5) Ishga tushirish"
 if [ "$TERMUX" = "1" ]; then
     pkill sshd 2>/dev/null || true
     sshd && ok "sshd ishga tushdi (port $PORT)"
@@ -318,7 +351,7 @@ else
 fi
 
 if [ "$USE_TS" = "1" ]; then
-    H "5) Tailscale"
+    H "6) Tailscale"
     if [ "$TERMUX" = "1" ]; then
         wa "Android'da Tailscale Play Store ilovasi orqali o'rnatiladi (Termux'dan emas)"
         wa "Ilovani o'rnatib, o'sha hisobga kirsang - bu sshd Tailscale IP'da ham ochiladi"
@@ -329,13 +362,16 @@ if [ "$USE_TS" = "1" ]; then
             TS_KEY=$(curl -fsSL --max-time 20 "$u" 2>/dev/null | grep -E '^tskey-' || true)
             [ -n "$TS_KEY" ] && ok "bir martalik kalit olindi (kutish rejimi)"
         fi
-        if [ -n "$TS_KEY" ]; then $SUDO tailscale up --authkey="$TS_KEY"
-        else wa "quyidagi havolani brauzerda och:"; $SUDO tailscale up; fi
+        # Qurilma nomiga mijozning haqiqiy useri yoziladi - konsolda kimniki ekani ko'rinsin
+        TSHOST=$(printf '%s-%s' "${SUDO_USER:-$(id -un)}" "$(hostname)" | tr 'A-Z' 'a-z' |
+                 tr -c 'a-z0-9-' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//' | cut -c1-63)
+        if [ -n "$TS_KEY" ]; then $SUDO tailscale up --hostname="$TSHOST" --authkey="$TS_KEY"
+        else wa "quyidagi havolani brauzerda och:"; $SUDO tailscale up --hostname="$TSHOST"; fi
         ok "Tailscale ulandi"
     fi
 fi
 
-H "6) Tekshiruv"
+H "7) Tekshiruv"
 if (command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$PORT ") ||
    (command -v netstat >/dev/null 2>&1 && netstat -ltn 2>/dev/null | grep -q ":$PORT "); then
     ok "$PORT-port tinglanmoqda"
@@ -350,7 +386,7 @@ line
 printf "  %sULANISH:%s\n" "$C_CY" "$C_0"
 P=""; [ "$PORT" != "22" ] && P="-p $PORT "
 if [ "$USE_LAN" = "1" ] || [ "$TERMUX" = "1" ]; then
-    for ip in $IPS; do echo "    ssh $P$(whoami)@$ip"; done
+    for ip in $IPS; do echo "    ssh $P$SSH_USER@$ip"; done
 fi
 if [ "$TERMUX" = "1" ]; then
     printf "
@@ -367,8 +403,9 @@ if [ "$TERMUX" = "1" ]; then
 fi
 if [ "$USE_TS" = "1" ]; then
     TSIP=$(tailscale ip -4 2>/dev/null | head -1)
-    [ -n "$TSIP" ] && echo "    ssh $P$(whoami)@$TSIP   (istalgan joydan)"
-    [ "$TERMUX" = "1" ] && echo "    ssh $P$(whoami)@<telefonning-tailscale-IP>   (ilovada ko'rasan)"
+    [ -n "$TSIP" ] && echo "    ssh $P$SSH_USER@$TSIP   (istalgan joydan)"
+    [ -n "${TSHOST:-}" ] && echo "    ssh $P$SSH_USER@$TSHOST   (MagicDNS)"
+    [ "$TERMUX" = "1" ] && echo "    ssh $P$SSH_USER@<telefonning-tailscale-IP>   (ilovada ko'rasan)"
 fi
 if [ -n "$KEYS" ] && [ "$DISABLE_PW" = "0" ]; then
     echo ""

@@ -11,13 +11,14 @@
         ... -Key nom1,nom2  |  -Key "ssh-ed25519 AAAA... izoh"
 
     Savolsiz:
-        ... -Yes -Mode tailscale-only -Key gh:username
+        ... -Yes -Mode tailscale -Key gh:username
 #>
 [CmdletBinding()]
 param(
     [Alias('y')][switch]$Yes,
     [string[]]$Mode,
     [string[]]$Key,
+    [string]$SshUser,
     [switch]$NoKey,
     [int]$Port = 22,
     [switch]$DisablePassword,
@@ -34,6 +35,8 @@ $BaseUrl = '__BASE__'; if ($BaseUrl -notmatch '^https?://') { $BaseUrl = '' }
 # Worker tomonidan to'ldiriladi (env: DEFAULT_KEY / DEFAULT_MODE). Bo'sh bo'lsa - e'tiborsiz.
 $DefKey  = '__DEFAULT_KEY__';  if ($DefKey  -like '*DEFAULT_KEY*')  { $DefKey  = '' }
 $DefMode = '__DEFAULT_MODE__'; if ($DefMode -like '*DEFAULT_MODE*') { $DefMode = '' }
+$DefUser = '__DEFAULT_USER__'; if ($DefUser -like '*DEFAULT_USER*') { $DefUser = '' }
+if (-not $SshUser) { $SshUser = $DefUser }
 if ($Base) { $BaseUrl = $Base.TrimEnd("/") }
 $KEYS_BASE = if ($BaseUrl) { "$BaseUrl/keys" } else { "" }
 $TS_URL    = if ($BaseUrl) { "$BaseUrl/ts-key" } else { "" }
@@ -179,6 +182,7 @@ if ($useTs -and -not $TailscaleAuthKey -and -not $TS_URL -and -not $Yes) {
 Line
 Write-Host "  BAJARILADIGAN ISHLAR" -ForegroundColor Yellow
 Write-Host "    - OpenSSH Server o'rnatiladi, avtomatik ishga tushadi (port $Port)"
+if ($SshUser) { Write-Host "    - '$SshUser' admin hisobi ochiladi (kirish shu nom bilan)" }
 if ($keys) { foreach ($k in $keys) { Write-Host "    - Kalit: $(KeyLabel $k)" } }
 else       { Write-Host "    - Kalit joylanmaydi (parol bilan kiriladi)" }
 if ($noPass) { Write-Host "    - Parol bilan kirish O'CHIRILADI" -ForegroundColor Yellow }
@@ -242,7 +246,33 @@ $txt = SetD $txt 'PasswordAuthentication' $(if ($noPass) { 'no' } else { 'yes' }
 Set-Content $cfg $txt -Encoding utf8
 Ok "port=$Port, kalit=yoq, parol=$(if($noPass){"yo'q"}else{'ha'})"
 
-Hd "3) Ochiq kalitlar"
+# Standart qobiq cmd.exe - masofadan boshqarish uchun PowerShell qulayroq
+if (-not (Test-Path 'HKLM:\SOFTWARE\OpenSSH')) { New-Item 'HKLM:\SOFTWARE\OpenSSH' -Force | Out-Null }
+New-ItemProperty 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -PropertyType String -Force `
+    -Value (Get-Command powershell.exe).Source | Out-Null
+Ok "standart qobiq: PowerShell"
+
+Hd "3) Boshqaruv hisobi"
+if (-not $SshUser) {
+    $SshUser = $env:USERNAME
+    Wa "alohida hisob ochilmadi - '$SshUser' bilan kiriladi"
+} else {
+    $admGrp = (New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-544'
+              ).Translate([Security.Principal.NTAccount]).Value.Split('\')[-1]
+    if (Get-LocalUser -Name $SshUser -ErrorAction SilentlyContinue) { Ok "hisob bor: $SshUser" }
+    else {
+        $pw = ConvertTo-SecureString ([Guid]::NewGuid().ToString('N') + '!Aa1') -AsPlainText -Force
+        New-LocalUser -Name $SshUser -Password $pw -FullName $SshUser -Description 'setup-ssh' `
+            -PasswordNeverExpires -AccountNeverExpires -UserMayNotChangePassword | Out-Null
+        Ok "hisob ochildi: $SshUser (tasodifiy parol - faqat kalit bilan kiriladi)"
+    }
+    $uSid = (Get-LocalUser -Name $SshUser).SID.Value
+    $mem  = try { (Get-LocalGroupMember -Group $admGrp -ErrorAction Stop).SID.Value } catch { @() }
+    if ($uSid -notin $mem) { Add-LocalGroupMember -Group $admGrp -Member $SshUser }
+    Ok "$admGrp guruhida - to'liq huquq"
+}
+
+Hd "4) Ochiq kalitlar"
 if (-not $keys) { Wa "joylanmadi - parol bilan kiriladi" }
 else {
     $kf = "$env:ProgramData\ssh\administrators_authorized_keys"
@@ -258,7 +288,7 @@ else {
     Ok "huquqlar to'g'irlandi"
 }
 
-Hd "4) Firewall va tarmoq"
+Hd "5) Firewall va tarmoq"
 Get-NetFirewallRule -DisplayName 'SSH (setup-ssh)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 if ($useLan) {
     New-NetFirewallRule -DisplayName 'SSH (setup-ssh)' -Direction Inbound -Protocol TCP `
@@ -277,7 +307,7 @@ Restart-Service sshd
 Ok "sshd qayta ishga tushdi"
 
 if ($useTs) {
-    Hd "5) Tailscale"
+    Hd "6) Tailscale"
     if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
         winget install --id tailscale.tailscale --silent --accept-package-agreements --accept-source-agreements
         $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
@@ -289,7 +319,11 @@ if ($useTs) {
             if ($mk -match '^tskey-') { $TailscaleAuthKey = $mk; Ok "bir martalik kalit olindi (kutish rejimi)" }
         } catch { }
     }
-    $a = @('up','--accept-dns=false','--unattended')
+    # Qurilma nomiga mijozning haqiqiy Windows useri yoziladi - konsolda kimniki ekani ko'rinsin
+    $tsHost = (("$env:USERNAME-$env:COMPUTERNAME" -replace '[^A-Za-z0-9]','-') -replace '-+','-').
+              Trim('-').ToLower()
+    if ($tsHost.Length -gt 63) { $tsHost = $tsHost.Substring(0, 63).Trim('-') }
+    $a = @('up','--accept-dns=false','--unattended',"--hostname=$tsHost")
     if ($TailscaleAuthKey) { $a += "--authkey=$TailscaleAuthKey" } else { Wa "brauzer ochiladi - hisobingga kir" }
     & tailscale @a
     Ok "Tailscale ulandi (servis fonda)"
@@ -307,7 +341,7 @@ if ($useTs) {
     Ok "Tailscale UI yopildi (fonda ishlaydi)"
 }
 
-Hd "6) Tekshiruv"
+Hd "7) Tekshiruv"
 if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
     Ok "$Port-port tinglanmoqda"
 } else { Wa "$Port-port tinglanmayapti - sshd loglarini ko'r" }
@@ -317,11 +351,11 @@ Write-Host "  TAYYOR" -ForegroundColor Green
 Line
 Write-Host "  ULANISH:" -ForegroundColor Cyan
 $p = if ($Port -eq 22) { "" } else { "-p $Port " }
-if ($useLan) { foreach ($ip in $ips) { Write-Host "    ssh $p$env:USERNAME@$($ip.IPAddress)   ($($ip.InterfaceAlias))" } }
+if ($useLan) { foreach ($ip in $ips) { Write-Host "    ssh $p$SshUser@$($ip.IPAddress)   ($($ip.InterfaceAlias))" } }
 if ($useTs) {
     $tsip = (& tailscale ip -4 2>$null | Select-Object -First 1)
-    if ($tsip) { Write-Host "    ssh $p$env:USERNAME@$tsip   (istalgan joydan)" }
-    Write-Host "    ssh $p$env:USERNAME@$(($env:COMPUTERNAME).ToLower())   (MagicDNS)"
+    if ($tsip) { Write-Host "    ssh $p$SshUser@$tsip   (istalgan joydan)" }
+    Write-Host "    ssh $p$SshUser@$tsHost   (MagicDNS)"
 }
 if ($keys -and -not $noPass) {
     Write-Host ""

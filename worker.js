@@ -9,6 +9,7 @@
 //   KEYS_BRANCH   default "main"
 //   DEFAULT_KEY   "nom"  -> --key berilmasa shu ishlatiladi (qo'shimcha --key lar ustiga qo'shiladi)
 //   DEFAULT_MODE  "lan" | "tailscale" | "all" -> --mode berilmasa savol o'rniga shu
+//   DEFAULT_USER  "nom"  -> shu nomli admin/sudo hisobi ochiladi, kirish doim shu nom bilan
 import setupSh from './setup.sh';
 import setupPs1 from './setup.ps1';
 
@@ -89,7 +90,8 @@ export default {
       body
         .replaceAll('__BASE__', url.origin)
         .replaceAll('__DEFAULT_KEY__', env.DEFAULT_KEY || '')
-        .replaceAll('__DEFAULT_MODE__', env.DEFAULT_MODE || ''),
+        .replaceAll('__DEFAULT_MODE__', env.DEFAULT_MODE || '')
+        .replaceAll('__DEFAULT_USER__', env.DEFAULT_USER || ''),
       { 'cache-control': 'public, max-age=60' },
     );
   },
