@@ -199,7 +199,7 @@ if ($useTs -and -not $TailscaleAuthKey -and -not $TS_URL -and -not $Yes) {
 Line
 Write-Host "  BAJARILADIGAN ISHLAR" -ForegroundColor Yellow
 Write-Host "    - OpenSSH Server o'rnatiladi, avtomatik ishga tushadi (port $Port)"
-if ($SshUser) { Write-Host "    - '$SshUser' admin hisobi ochiladi (kirish shu nom bilan)" }
+if ($SshUser -and $keys) { Write-Host "    - '$SshUser' admin hisobi ochiladi (kirish shu nom bilan)" }
 if ($keys) { foreach ($k in $keys) { Write-Host "    - Kalit: $(KeyLabel $k)" } }
 else       { Write-Host "    - Kalit joylanmaydi (parol bilan kiriladi)" }
 if ($noPass) { Write-Host "    - Parol bilan kirish O'CHIRILADI" -ForegroundColor Yellow }
@@ -270,6 +270,11 @@ New-ItemProperty 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -PropertyType Strin
 Ok "standart qobiq: PowerShell"
 
 Hd "3) Boshqaruv hisobi"
+# Kalitsiz hisob ochish ma'nosiz: paroli tasodifiy va hech kimda yo'q - kirib bo'lmaydi.
+if ($SshUser -and -not $keys) {
+    Wa "kalit joylanmaydi - '$SshUser' hisobi ochilmadi (unga kirib bo'lmas edi)"
+    $SshUser = ''
+}
 if (-not $SshUser) {
     $SshUser = $env:USERNAME
     Wa "alohida hisob ochilmadi - '$SshUser' bilan kiriladi"

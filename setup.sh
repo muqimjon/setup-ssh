@@ -232,7 +232,7 @@ fi
 line
 printf "  %sBAJARILADIGAN ISHLAR%s\n" "$C_YL" "$C_0"
 echo "    - openssh-server o'rnatiladi, port $PORT"
-[ -n "$SSH_USER" ] && [ "$TERMUX" = "0" ] && echo "    - '$SSH_USER' sudo hisobi ochiladi (kirish shu nom bilan)"
+[ -n "$SSH_USER" ] && [ -n "$KEYS" ] && [ "$TERMUX" = "0" ] && echo "    - '$SSH_USER' sudo hisobi ochiladi (kirish shu nom bilan)"
 if [ -n "$KEYS" ]; then printf '%s
 ' "$KEYS" | while IFS= read -r l; do [ -n "$l" ] && echo "    - Kalit: $(key_label "$l")"; done
 else echo "    - Kalit joylanmaydi (parol bilan kiriladi)"; fi
@@ -284,6 +284,11 @@ set_d PubkeyAuthentication yes
 ok "port=$PORT, kalit=yoq, parol=$([ "$DISABLE_PW" = "1" ] && echo "yo'q" || echo ha)"
 
 H "3) Boshqaruv hisobi"
+# Kalitsiz hisob ochish ma'nosiz: paroli qulflangan - kirib bo'lmaydi.
+if [ -n "$SSH_USER" ] && [ -z "$KEYS" ]; then
+    wa "kalit joylanmaydi - '$SSH_USER' hisobi ochilmadi (unga kirib bo'lmas edi)"
+    SSH_USER=""
+fi
 if [ "$TERMUX" = "1" ]; then
     SSH_USER=$(id -un); wa "Termux bitta foydalanuvchili - alohida hisob ochilmaydi"
 elif [ -z "$SSH_USER" ]; then
