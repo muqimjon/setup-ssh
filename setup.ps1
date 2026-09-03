@@ -211,41 +211,63 @@ if (-not (AskYN "Davom etamizmi?" $true)) { Write-Host "  Bekor qilindi."; retur
 
 # ================= BAJARISH =================
 
+# Tailscale yuklab olish eng sekin qadam - uni fonda boshlaymiz va qolgan
+# ishlarni (o'rnatish, hisob, kalitlar, firewall) shu payt bajaramiz.
+$tsProc = $null
+if ($useTs -and -not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
+    $tsProc = Start-Process winget -PassThru -WindowStyle Hidden -ArgumentList @(
+        'install','--id','tailscale.tailscale','--silent',
+        '--accept-package-agreements','--accept-source-agreements')
+    Wa "Tailscale fonda yuklanmoqda - qolgan ishlar davom etadi"
+}
+
 Hd "1) OpenSSH Server"
 if (Get-Service sshd -ErrorAction SilentlyContinue) { Ok "allaqachon o'rnatilgan" }
 else {
-    # Windows komponenti (FoD) Windows Update'ga tayanadi - o'chirilgan tizimlarda
-    # "Access is denied" beradi. Bunday holda Microsoft'ning MSI paketiga o'tamiz.
-    $cap  = try { Get-WindowsCapability -Online -Name 'OpenSSH.Server*' } catch { $null }
-    $done = $false
-    if ($cap) {
-        Write-Host "   Windows komponenti o'rnatilmoqda..."
-        try { Add-WindowsCapability -Online -Name $cap.Name | Out-Null; $done = $true }
-        catch { Wa "Windows komponenti o'rnatilmadi: $($_.Exception.Message.Trim())" }
+    # Tez yo'l: Microsoft'ning rasmiy paketi (~5 MB, bir necha soniya).
+    # Zaxira: Windows komponenti (FoD) - Windows Update orqali bir necha DAQIQA
+    # oladi va WU o'chirilgan tizimlarda "Access is denied" beradi.
+    $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
+        'ARM64' { 'ARM64' }
+        'AMD64' { 'Win64' }
+        default { 'Win32' }
     }
-    if (-not $done) {
-        Wa "zaxira yo'l: Microsoft Win32-OpenSSH (MSI)"
+    $dst = Join-Path $env:ProgramFiles 'OpenSSH'
+    try {
+        Write-Host "   yuklab olinmoqda (OpenSSH-$arch)..."
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $msiName = switch ($env:PROCESSOR_ARCHITECTURE) {
-            'ARM64' { 'OpenSSH-ARM64.msi' }
-            'AMD64' { 'OpenSSH-Win64.msi' }
-            default { 'OpenSSH-Win32.msi' }
-        }
-        $rel = Invoke-RestMethod 'https://api.github.com/repos/PowerShell/Win32-OpenSSH/releases/latest' `
-                                 -Headers @{ 'user-agent' = 'setup-ssh' } -TimeoutSec 30
-        $url = ($rel.assets | Where-Object { $_.name -eq $msiName }).browser_download_url
-        if (-not $url) { Er "OpenSSH MSI topilmadi: $msiName" }
-        $msi = Join-Path $env:TEMP $msiName
-        Invoke-WebRequest $url -OutFile $msi -UseBasicParsing
-        $p = Start-Process msiexec -ArgumentList "/i `"$msi`" /qn /norestart ADDLOCAL=Server" -Wait -PassThru
-        Remove-Item $msi -Force -ErrorAction SilentlyContinue
-        if ($p.ExitCode -ne 0) { Er "MSI o'rnatilmadi (kod $($p.ExitCode))" }
+        $zip = Join-Path $env:TEMP 'openssh.zip'
+        $tmp = Join-Path $env:TEMP 'openssh-unzip'
+        Invoke-WebRequest "https://github.com/PowerShell/Win32-OpenSSH/releases/latest/download/OpenSSH-$arch.zip" `
+                          -OutFile $zip -UseBasicParsing -TimeoutSec 120
+        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+        Expand-Archive $zip -DestinationPath $tmp -Force
+        Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue
+        Move-Item (Get-ChildItem $tmp -Directory | Select-Object -First 1).FullName $dst -Force
+        Remove-Item $zip, $tmp -Recurse -Force -ErrorAction SilentlyContinue
+        & (Join-Path $dst 'install-sshd.ps1') | Out-Null
+        Ok "o'rnatildi (to'g'ridan yuklab olindi)"
+    } catch {
+        Wa "to'g'ridan o'rnatilmadi: $($_.Exception.Message.Trim())"
+        Wa "zaxira: Windows komponenti - bir necha daqiqa olishi mumkin..."
+        $cap = try { Get-WindowsCapability -Online -Name 'OpenSSH.Server*' } catch { $null }
+        if (-not $cap) { Er "OpenSSH o'rnatilmadi" }
+        Add-WindowsCapability -Online -Name $cap.Name | Out-Null
+        Ok "o'rnatildi (Windows komponenti)"
     }
     if (-not (Get-Service sshd -ErrorAction SilentlyContinue)) { Er "sshd xizmati topilmadi" }
-    Ok "o'rnatildi"
 }
 Set-Service sshd -StartupType Automatic
 if ((Get-Service sshd).Status -ne 'Running') { Start-Service sshd }
+# Birinchi ishga tushishda sshd konfigni o'zi yaratadi; yaratmasa - namunadan ko'chiramiz
+$cfg = Join-Path $env:ProgramData 'ssh\sshd_config'
+if (-not (Test-Path $cfg)) {
+    $def = Join-Path $env:ProgramFiles 'OpenSSH\sshd_config_default'
+    if (Test-Path $def) {
+        New-Item (Split-Path $cfg) -ItemType Directory -Force | Out-Null
+        Copy-Item $def $cfg
+    }
+}
 Ok "sshd ishlayapti"
 
 Hd "2) sshd_config"
@@ -330,10 +352,12 @@ Ok "sshd qayta ishga tushdi"
 
 if ($useTs) {
     Hd "6) Tailscale"
-    if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
-        winget install --id tailscale.tailscale --silent --accept-package-agreements --accept-source-agreements
+    if ($tsProc) {
+        Write-Host "   fondagi yuklab olish kutilmoqda..."
+        $tsProc.WaitForExit()
         $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
     }
+    if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) { Er "Tailscale o'rnatilmadi" }
     if (-not $TailscaleAuthKey) {
         try {
             $u = if ($Member) { $TS_URL } elseif ($TsTag) { "$TS_URL`?tag=$TsTag" } else { "$TS_URL`?tag=client" }

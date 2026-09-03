@@ -83,6 +83,14 @@ curl -fsSL -o "%TEMP%\s.ps1" <manzil>/setup.ps1 && powershell -ExecutionPolicy B
 
 Parametrlar administrator oynasiga o'zgarmasdan uzatiladi.
 
+> **OpenSSH qanday o'rnatiladi.** Skript Microsoft'ning rasmiy Win32-OpenSSH
+> paketini to'g'ridan yuklab oladi — **~3 soniya**. Windows'ning o'z komponenti
+> (`Add-WindowsCapability`) **5-6 daqiqa** oladi va Windows Update o'chirilgan
+> mijozlarda umuman ishlamaydi, shuning uchun u endi zaxira yo'l. Buning evaziga
+> OpenSSH'ni Windows Update yangilamaydi — yangi versiya kerak bo'lsa shu
+> buyruqni qayta ishlating (kalitlar ro'yxati o'zgarganda qanday qilsangiz).
+> sshd allaqachon bo'lsa, bu qadam butunlay o'tkazib yuboriladi.
+
 ### Linux / macOS / Termux
 
 ```bash
