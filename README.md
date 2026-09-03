@@ -54,14 +54,16 @@ Manzil bitta — qaysi skript kerakligini o'zi aniqlaydi. Quyida har bir muhit u
 
 ### Windows
 
-Deyarli hamma holatda **Administrator** kerak.
+**Administrator bo'lish shart emas.** Oddiy terminalda ishga tushiring — skript
+o'zi huquq so'raydi (UAC oynasi chiqadi, "Ha" bosasiz) va yangi administrator
+oynasida davom etadi. Terminalni yopib, adminlab qayta ochish kerak emas.
 
-**PowerShell / Windows Terminal / PowerShell 7** — eng qisqa yo'l:
+**PowerShell / Windows Terminal / PowerShell 7:**
 ```powershell
 irm <manzil> | iex
 ```
 
-**cmd.exe** — `irm | iex` bu yerda ishlamaydi, cmd'da PowerShell chaqiriladi:
+**cmd.exe:**
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (irm <manzil>)"
 ```
@@ -69,12 +71,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (irm <manzil>)"
 > `|` o'rniga `iex (irm ...)` yozilgani bejiz emas: cmd qo'shtirnoq ichidagi `|` ni
 > o'zining quvuri deb qabul qilib buyruqni buzadi. Qavsli shakl hamma joyda ishlaydi.
 
-**Admin emas cmd yoki Win+R** — o'zi Administrator so'raydi (UAC oynasi chiqadi):
-```bat
-powershell -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command \"iex (irm <manzil>)\"'"
-```
-
-**curl bilan (cmd yoki PowerShell)** — `/setup.ps1` yo'lini **aniq** yozish shart:
+**curl bilan** — `/setup.ps1` yo'lini **aniq** yozish shart:
 ```bat
 curl -fsSL -o "%TEMP%\s.ps1" <manzil>/setup.ps1 && powershell -ExecutionPolicy Bypass -File "%TEMP%\s.ps1"
 ```
@@ -83,6 +80,8 @@ curl -fsSL -o "%TEMP%\s.ps1" <manzil>/setup.ps1 && powershell -ExecutionPolicy B
 ```powershell
 & ([scriptblock]::Create((irm <manzil>/setup.ps1))) -Mode all -Key gh:username
 ```
+
+Parametrlar administrator oynasiga o'zgarmasdan uzatiladi.
 
 ### Linux / macOS / Termux
 
@@ -184,9 +183,15 @@ Sozlanmasa — eski xatti-harakat: skriptni ishga tushirgan foydalanuvchi nomi b
   ni PowerShell qilib qo'yadi, aks holda SSH sizni `cmd.exe` ga tashlaydi.
 - **Tarmoq resurslari ishlamaydi ("double-hop").** Kalit bilan kirilgan SSH
   sessiyasida tarmoq credentiali bo'lmaydi, shuning uchun sessiya ichidan
-  `\server\share` yoki boshqa mashinaga kirib bo'lmaydi. Lokal ishlarga
+  `\\server\share` yoki boshqa mashinaga kirib bo'lmaydi. Lokal ishlarga
   (loglar, xizmatlar, fayllar, registry) ta'sir qilmaydi. Bu Windows'ning
   Kerberos dizayni — hisob nomiga bog'liq emas.
+- **Windows'da hisobning uy papkasi yo'q.** Ochiq kalit bilan kirilganda sshd
+  S4U token ishlatadi va profil yaratilmaydi, shuning uchun `$HOME`, `~` va
+  `sftp`ning boshlang'ich papkasi `C:\WINDOWS` bo'ladi. Buyruq ishlatish,
+  log o'qish, xizmat boshqarishga **ta'sir qilmaydi**; faqat fayl uzatishda
+  to'liq yo'l yozing:
+  `scp fayl.txt ovoza@host:C:/Users/Public/fayl.txt`
 - **Tailscale qurilma nomida mijozning haqiqiy useri turadi:**
   `nout-plus-win-rge54s2vpdd`. Ulanish uchun kerak emas, lekin admin konsolda
   qaysi qurilma kimniki ekani darrov ko'rinadi.

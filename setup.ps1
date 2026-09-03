@@ -3,7 +3,7 @@
     SSH serverni o'rnatadi va (ixtiyoriy) Tailscale bilan istalgan joydan
     ulanadigan qiladi. Manba manzili Worker tomonidan yoziladi (-Base bilan ham beriladi).
 
-    Ishga tushirish (PowerShell, "Run as administrator"):
+    Ishga tushirish (istalgan terminalda - admin huquqini o'zi so'raydi):
         irm <manzil> | iex
 
     Parametr bilan (irm|iex parametr qabul qilmaydi):
@@ -103,13 +103,30 @@ function Resolve-Key([string]$v) {
     return $lines
 }
 
+# Admin emasmiz - o'zimizni admin sifatida qayta ishga tushiramiz (UAC oynasi chiqadi).
+# Terminalni yopib, adminlab qayta ochish shart emas.
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
         ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Er @"
-Administrator huquqi kerak.
-PowerShell ni "Run as administrator" bilan ochib qayta urinib ko'r:
-    irm <manzil> | iex
-"@
+    $q  = { param($s) "'" + ("$s" -replace "'", "''") + "'" }
+    $ar = @()
+    foreach ($kv in $PSBoundParameters.GetEnumerator()) {
+        $v = $kv.Value
+        if     ($v -is [switch]) { if ($v.IsPresent) { $ar += "-$($kv.Key)" } }
+        elseif ($v -is [array])  { $ar += "-$($kv.Key) " + (($v | ForEach-Object { & $q $_ }) -join ',') }
+        else                     { $ar += "-$($kv.Key) " + (& $q $v) }
+    }
+    $src = if ($BaseUrl) { "& ([scriptblock]::Create((irm '$BaseUrl/setup.ps1')))" }
+           elseif ($PSCommandPath) { "& $(& $q $PSCommandPath)" }
+           else { Er "Administrator huquqi kerak (manba manzili noma'lum)" }
+    $enc = [Convert]::ToBase64String(
+           [Text.Encoding]::Unicode.GetBytes("$src $($ar -join ' ')"))
+    Wa "Administrator huquqi kerak - ruxsat oynasida 'Ha' deng"
+    try {
+        Start-Process powershell -Verb RunAs -ArgumentList @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-NoExit','-EncodedCommand',$enc) | Out-Null
+    } catch { Er "Administrator huquqi berilmadi - o'rnatish bekor qilindi" }
+    Write-Host "   O'rnatish yangi (administrator) oynada davom etmoqda." -ForegroundColor Cyan
+    return
 }
 
 $os  = (Get-CimInstance Win32_OperatingSystem).Caption
@@ -284,7 +301,7 @@ else {
             Ok "qo'shildi: $(KeyLabel $k)"
         } else { Ok "allaqachon bor: $(KeyLabel $k)" }
     }
-    icacls $kf /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F" | Out-Null
+    icacls $kf /inheritance:r /grant '*S-1-5-32-544:F' /grant '*S-1-5-18:F' | Out-Null
     Ok "huquqlar to'g'irlandi"
 }
 

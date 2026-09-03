@@ -321,7 +321,7 @@ else
         if $SUDO grep -qF "$b" "$AK" 2>/dev/null; then ok "allaqachon bor: $(key_label "$k")"
         else echo "$k" | $SUDO tee -a "$AK" >/dev/null; ok "qo'shildi: $(key_label "$k")"; fi
     done <<< "$KEYS"
-    $SUDO chown -R "$SSH_USER" "$UHOME/.ssh" 2>/dev/null || true
+    $SUDO chown -R "$SSH_USER:" "$UHOME/.ssh" 2>/dev/null || true
     ok "joy: $AK"
 fi
 
