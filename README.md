@@ -197,12 +197,16 @@ Sozlanmasa — eski xatti-harakat: skriptni ishga tushirgan foydalanuvchi nomi b
   `\\server\share` yoki boshqa mashinaga kirib bo'lmaydi. Lokal ishlarga
   (loglar, xizmatlar, fayllar, registry) ta'sir qilmaydi. Bu Windows'ning
   Kerberos dizayni — hisob nomiga bog'liq emas.
-- **Windows'da hisobning uy papkasi yo'q.** Ochiq kalit bilan kirilganda sshd
-  S4U token ishlatadi va profil yaratilmaydi, shuning uchun `$HOME`, `~` va
-  `sftp`ning boshlang'ich papkasi `C:\WINDOWS` bo'ladi. Buyruq ishlatish,
-  log o'qish, xizmat boshqarishga **ta'sir qilmaydi**; faqat fayl uzatishda
-  to'liq yo'l yozing:
-  `scp fayl.txt ovoza@host:C:/Users/Public/fayl.txt`
+- **Uy papkasi.** Joriy paket (OpenSSH 10.0p2) hisob uchun profil yaratadi:
+  `$HOME` = `C:\Users\<hisob>` — mijoz mashinasida tasdiqlangan. Eski FoD
+  versiyasida ochiq kalit bilan kirilganda profil yaratilmay `C:\WINDOWS`
+  bo'lib qolardi; zaxira yo'l ishga tushsa shu holat qaytishi mumkin, unda
+  `scp` da to'liq yo'l yozing.
+- **Tailscale CLI'sini bu hisob boshqara olmaydi.** Tailscale'ni o'rnatgan
+  foydalanuvchi uni "server mode"da egallaydi, shuning uchun SSH ichidan
+  `tailscale status`/`up` "connection not allowed" beradi. Ulanishning o'ziga
+  ta'sir qilmaydi. Oqibati: skriptni **SSH orqali** qayta ishlatsangiz Tailscale
+  qadami ogohlantirish bilan o'tkazib yuboriladi — qolgan hammasi bajariladi.
 - **Tailscale qurilma nomida mijozning haqiqiy useri turadi:**
   `nout-plus-win-rge54s2vpdd`. Ulanish uchun kerak emas, lekin admin konsolda
   qaysi qurilma kimniki ekani darrov ko'rinadi.

@@ -399,7 +399,12 @@ if ($useTs) {
     $a = @('up','--accept-dns=false','--unattended',"--hostname=$tsHost")
     if ($TailscaleAuthKey) { $a += "--authkey=$TailscaleAuthKey" } else { Wa "brauzer ochiladi - hisobingga kir" }
     & tailscale @a
-    Ok "Tailscale ulandi (servis fonda)"
+    if ($LASTEXITCODE -ne 0) {
+        # Tailscale'ni uni o'rnatgan foydalanuvchi boshqaradi; SSH orqali boshqa
+        # hisobdan qayta ishlatilsa shu yerga tushamiz. Qolgan ishlar bajarilgan.
+        Wa "Tailscale sozlanmadi (kod $LASTEXITCODE) - qurilma allaqachon ulangan bo'lishi mumkin"
+        Wa "kerak bo'lsa shu buyruqni qurilmaning o'zida ishga tushiring"
+    } else { Ok "Tailscale ulandi (servis fonda)" }
 
     # GUI/tray oynasini yopish va avtostartdan olib tashlash - faqat servis (ulanish) qoladi
     Start-Sleep -Seconds 2
