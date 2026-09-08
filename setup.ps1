@@ -122,12 +122,17 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
            [Text.Encoding]::Unicode.GetBytes("$src $($ar -join ' ')"))
     Wa "Administrator huquqi kerak - ruxsat oynasida 'Ha' deng"
     try {
-        Start-Process powershell -Verb RunAs -ArgumentList @(
+        # -WorkingDirectory shart: aks holda bola jarayon ota-jarayonning joriy
+        # papkasini 8.3 shaklda oladi va u volumeda 8.3 o'chiq bo'lsa - yo'q papka.
+        Start-Process powershell -Verb RunAs -WorkingDirectory $env:SystemRoot -ArgumentList @(
             '-NoProfile','-ExecutionPolicy','Bypass','-NoExit','-EncodedCommand',$enc) | Out-Null
     } catch { Er "Administrator huquqi berilmadi - o'rnatish bekor qilindi" }
     Write-Host "   O'rnatish yangi (administrator) oynada davom etmoqda." -ForegroundColor Cyan
     return
 }
+
+# Joriy papka noto'g'ri (o'chirilgan yoki 8.3 hal bo'lmaydigan) bo'lishi mumkin
+Set-Location $env:SystemRoot
 
 $os  = (Get-CimInstance Win32_OperatingSystem).Caption
 $ips = Get-NetIPAddress -AddressFamily IPv4 |
@@ -236,19 +241,34 @@ else {
     try {
         Write-Host "   yuklab olinmoqda (OpenSSH-$arch)..."
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $zip = Join-Path $env:TEMP 'openssh.zip'
-        $tmp = Join-Path $env:TEMP 'openssh-unzip'
-        Invoke-WebRequest "https://github.com/PowerShell/Win32-OpenSSH/releases/latest/download/OpenSSH-$arch.zip" `
-                          -OutFile $zip -UseBasicParsing -TimeoutSec 120
-        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-        Expand-Archive $zip -DestinationPath $tmp -Force
+        # Foydalanuvchi profilidan foydalanmaymiz: uning yo'li 8.3 shaklda kelib
+        # hal bo'lmasligi mumkin. Ochishda ham .NET - Expand-Archive yo'l tahlil qiladi.
+        $wrk = Join-Path $env:SystemRoot 'Temp\setup-ssh'
+        Remove-Item $wrk -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item $wrk -ItemType Directory -Force | Out-Null
+        $zip = Join-Path $wrk 'openssh.zip'
+        $tmp = Join-Path $wrk 'x'
+        # Avval o'z manzilimiz (Cloudflare chekkasida keshlangan, mijozga yaqin),
+        # u ishlamasa - to'g'ridan GitHub'dan.
+        $srcs = @()
+        if ($BaseUrl) { $srcs += "$BaseUrl/openssh/$($arch.ToLower()).zip" }
+        $srcs += "https://github.com/PowerShell/Win32-OpenSSH/releases/latest/download/OpenSSH-$arch.zip"
+        foreach ($u in $srcs) {
+            try { Invoke-WebRequest $u -OutFile $zip -UseBasicParsing -TimeoutSec 180; break }
+            catch { if ($u -eq $srcs[-1]) { throw }; Wa "manba javob bermadi, zaxirasiga o'tildi" }
+        }
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::ExtractToDirectory($zip, $tmp)
+        $src = Get-ChildItem $tmp -Directory | Select-Object -First 1
+        if (-not $src) { throw "arxiv ichida papka topilmadi" }
         Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue
-        Move-Item (Get-ChildItem $tmp -Directory | Select-Object -First 1).FullName $dst -Force
-        Remove-Item $zip, $tmp -Recurse -Force -ErrorAction SilentlyContinue
+        Move-Item $src.FullName $dst -Force
+        Remove-Item $wrk -Recurse -Force -ErrorAction SilentlyContinue
         & (Join-Path $dst 'install-sshd.ps1') | Out-Null
         Ok "o'rnatildi (to'g'ridan yuklab olindi)"
     } catch {
         Wa "to'g'ridan o'rnatilmadi: $($_.Exception.Message.Trim())"
+        Wa "  (qator $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line.Trim()))"
         Wa "zaxira: Windows komponenti - bir necha daqiqa olishi mumkin..."
         $cap = try { Get-WindowsCapability -Online -Name 'OpenSSH.Server*' } catch { $null }
         if (-not $cap) { Er "OpenSSH o'rnatilmadi" }
