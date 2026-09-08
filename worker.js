@@ -78,15 +78,13 @@ export default {
     // ---- OpenSSH paketi: GitHub sekin/beqaror, Cloudflare chekkasida keshlaymiz ----
     if (path.startsWith('/openssh/')) {
       const m = /^\/openssh\/(win64|win32|arm64)\.zip$/.exec(path);
-      if (!m) return txt('not found
-', {}, 404);
+      if (!m) return txt('not found\n', {}, 404);
       const arch = { win64: 'Win64', win32: 'Win32', arm64: 'ARM64' }[m[1]];
       const r = await fetch(
         `https://github.com/PowerShell/Win32-OpenSSH/releases/latest/download/OpenSSH-${arch}.zip`,
         { cf: { cacheEverything: true, cacheTtl: 86400 } },
       );
-      if (!r.ok) return txt('# paket olinmadi
-', {}, 502);
+      if (!r.ok) return txt('# paket olinmadi\n', {}, 502);
       return new Response(r.body, {
         headers: { 'content-type': 'application/zip', 'cache-control': 'public, max-age=86400' },
       });
