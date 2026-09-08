@@ -219,7 +219,8 @@ if (-not (AskYN "Davom etamizmi?" $true)) { Write-Host "  Bekor qilindi."; retur
 # Tailscale yuklab olish eng sekin qadam - uni fonda boshlaymiz va qolgan
 # ishlarni (o'rnatish, hisob, kalitlar, firewall) shu payt bajaramiz.
 $tsProc = $null
-if ($useTs -and -not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
+if ($useTs -and -not (Get-Command tailscale -ErrorAction SilentlyContinue) `
+              -and (Get-Command winget -ErrorAction SilentlyContinue)) {
     $tsProc = Start-Process winget -PassThru -WindowStyle Hidden -ArgumentList @(
         'install','--id','tailscale.tailscale','--silent',
         '--accept-package-agreements','--accept-source-agreements')
@@ -264,7 +265,13 @@ else {
         Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue
         Move-Item $src.FullName $dst -Force
         Remove-Item $wrk -Recurse -Force -ErrorAction SilentlyContinue
-        & (Join-Path $dst 'install-sshd.ps1') | Out-Null
+        # ExecutionPolicy .ps1 faylni bloklaydi (admin oynada Restricted bo'lishi mumkin),
+        # shuning uchun alohida jarayonda Bypass bilan. Skript o'z papkasini
+        # $MyInvocation orqali topadi - aynan FAYL sifatida chaqirilishi shart.
+        $ins = Start-Process powershell -Wait -PassThru -NoNewWindow -ArgumentList @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',
+            ('"' + (Join-Path $dst 'install-sshd.ps1') + '"'))
+        if ($ins.ExitCode -ne 0) { throw "install-sshd.ps1 yiqildi (kod $($ins.ExitCode))" }
         Ok "o'rnatildi (to'g'ridan yuklab olindi)"
     } catch {
         Wa "to'g'ridan o'rnatilmadi: $($_.Exception.Message.Trim())"
