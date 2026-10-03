@@ -90,6 +90,23 @@ export default {
       });
     }
 
+    // ---- Tailscale MSI: LTSC'da winget yo'q, rasmiy paketni keshlab beramiz ----
+    if (path.startsWith('/tailscale/')) {
+      const m = /^\/tailscale\/(amd64|x86|arm64)\.msi$/.exec(path);
+      if (!m) return txt('not found\n', {}, 404);
+      const r = await fetch(
+        `https://pkgs.tailscale.com/stable/tailscale-setup-latest-${m[1]}.msi`,
+        { cf: { cacheEverything: true, cacheTtl: 86400 } },
+      );
+      if (!r.ok) return txt('# paket olinmadi\n', {}, 502);
+      return new Response(r.body, {
+        headers: {
+          'content-type': 'application/x-msi',
+          'cache-control': 'public, max-age=86400',
+        },
+      });
+    }
+
     // ---- o'rnatuvchi skript (Worker ichiga bog'langan) ----
     let body = null;
     if (path.endsWith('.ps1')) body = setupPs1;

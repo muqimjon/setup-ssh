@@ -216,16 +216,6 @@ if (-not (AskYN "Davom etamizmi?" $true)) { Write-Host "  Bekor qilindi."; retur
 
 # ================= BAJARISH =================
 
-# Tailscale yuklab olish eng sekin qadam - uni fonda boshlaymiz va qolgan
-# ishlarni (o'rnatish, hisob, kalitlar, firewall) shu payt bajaramiz.
-$tsProc = $null
-if ($useTs -and -not (Get-Command tailscale -ErrorAction SilentlyContinue) `
-              -and (Get-Command winget -ErrorAction SilentlyContinue)) {
-    $tsProc = Start-Process winget -PassThru -WindowStyle Hidden -ArgumentList @(
-        'install','--id','tailscale.tailscale','--silent',
-        '--accept-package-agreements','--accept-source-agreements')
-    Wa "Tailscale fonda yuklanmoqda - qolgan ishlar davom etadi"
-}
 
 Hd "1) OpenSSH Server"
 if (Get-Service sshd -ErrorAction SilentlyContinue) { Ok "allaqachon o'rnatilgan" }
@@ -379,12 +369,37 @@ Ok "sshd qayta ishga tushdi"
 
 if ($useTs) {
     Hd "6) Tailscale"
-    if ($tsProc) {
-        Write-Host "   fondagi yuklab olish kutilmoqda..."
-        $tsProc.WaitForExit()
-        $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
+    if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
+        # winget LTSC/Server tahrirlarida yo'q (Store bilan keladi), shuning uchun
+        # Tailscale'ning rasmiy MSI'si. Avval o'z ko'zgumizdan - u mijozga yaqinroq.
+        $tsArch = switch ($env:PROCESSOR_ARCHITECTURE) {
+            'ARM64' { 'arm64' }
+            'AMD64' { 'amd64' }
+            default { 'x86' }
+        }
+        $msi  = Join-Path $env:SystemRoot "Temp\tailscale-$tsArch.msi"
+        $srcs = @()
+        if ($BaseUrl) { $srcs += "$BaseUrl/tailscale/$tsArch.msi" }
+        $srcs += "https://pkgs.tailscale.com/stable/tailscale-setup-latest-$tsArch.msi"
+        Write-Host "   yuklab olinmoqda (~37 MB)..."
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        foreach ($u in $srcs) {
+            try { Invoke-WebRequest $u -OutFile $msi -UseBasicParsing -TimeoutSec 900; break }
+            catch { if ($u -eq $srcs[-1]) { Er "Tailscale yuklab olinmadi: $($_.Exception.Message.Trim())" }
+                    Wa "manba javob bermadi, zaxirasiga o'tildi" }
+        }
+        $ti = Start-Process msiexec -Wait -PassThru -ArgumentList @(
+            '/i', ('"' + $msi + '"'), '/quiet', '/norestart')
+        Remove-Item $msi -Force -ErrorAction SilentlyContinue
+        if ($ti.ExitCode -notin 0, 3010) { Er "Tailscale o'rnatilmadi (kod $($ti.ExitCode))" }
+        $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+        if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
+            $tsExe = Join-Path $env:ProgramFiles 'Tailscale'
+            if (Test-Path (Join-Path $tsExe 'tailscale.exe')) { $env:Path = "$env:Path;$tsExe" }
+        }
+        if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) { Er "tailscale.exe topilmadi" }
+        Ok "o'rnatildi"
     }
-    if (-not (Get-Command tailscale -ErrorAction SilentlyContinue)) { Er "Tailscale o'rnatilmadi" }
     if (-not $TailscaleAuthKey) {
         try {
             $u = if ($Member) { $TS_URL } elseif ($TsTag) { "$TS_URL`?tag=$TsTag" } else { "$TS_URL`?tag=client" }
